@@ -56,8 +56,17 @@ partitions.
   atomically to `images/<release>/` next to the script (gitignored). A
   matching existing extraction is reused — re-runs after a partial flash
   stay cheap. Unknown archive names warn, get a member-path safety scan,
-  and the script prints a paste-ready manifest line; appending that line is
-  the whole new-release procedure.
+  and the script prints a paste-ready manifest line.
+- **`--register-image`:** the new-release procedure. Verifies a tarball
+  (member-path scan + every required file present in the listing — a random
+  tarball can't be pinned) and appends its sha256/size line to the manifest;
+  an already-pinned name is re-verified against its entry instead. No flash.
+- **https URLs:** the image argument may be an `https://` URL (https pinned
+  across redirects; plain http refused). It is downloaded atomically
+  (`.partial` + `mv`, so an existing file is always a completed download and
+  is reused) to `../downloads/` relative to the script, or `--download-dir
+  DIR`, then handled like a local tarball. Composes with flashing, `--check`
+  and `--register-image`.
 - **Preflight:** required files are checked for presence and non-emptiness
   before any fastboot traffic, in both modes. `--check` runs every
   verification step (manifest, extraction, contents) without flashing.

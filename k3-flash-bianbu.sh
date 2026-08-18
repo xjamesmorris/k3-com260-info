@@ -8,16 +8,21 @@
 # Usage:
 #   1. Put the board in recovery: hold FC_REC (pin 10 -> GND), power on
 #      (or pulse RST), release FC_REC, connect USB-C.
-#   2. ./k3-flash-bianbu.sh [--check] [--rm] <image-dir | release.tar.gz>
+#   2. ./k3-flash-bianbu.sh [--check | --register-image] [--rm]
+#          [--download-dir DIR] <image-dir | release.tar.gz | https://...>
 #
-#   Pass either an already-untarred release dir, or the release .tar.gz
-#   itself: the tarball is checked against k3-image-manifest.txt and
-#   extracted to images/<release>/ next to this script (a matching
+#   Pass an already-untarred release dir, the release .tar.gz itself, or
+#   an https URL of one. A tarball is checked against k3-image-manifest.txt
+#   and extracted to images/<release>/ next to this script (a matching
 #   existing extraction is reused, e.g. when re-running after a partial
-#   flash).
-#     --check  run every verification step but skip the flash
-#     --rm     delete images/<release>/ after a successful flash
-#              (archive mode only; the .tar.gz itself is never touched)
+#   flash). A URL is downloaded first, then handled like a local tarball.
+#     --check           run every verification step but skip the flash
+#     --rm              delete images/<release>/ after a successful flash
+#                       (archive mode only; the .tar.gz is never touched)
+#     --register-image  verify the tarball and pin it in the manifest, no
+#                       flash; an already-pinned name is just re-verified
+#     --download-dir D  where an https URL is saved (default: ../downloads
+#                       relative to this script)
 #
 # Erases NOR firmware + all UFS contents. NVMe is not touched.
 # Verified on K3-CoM260 (Firefly kit), Bianbu v4.0.1 Minimal and v4.0.4 LXQt.
@@ -38,7 +43,15 @@ REQUIRED=(factory/FSBL.bin factory/bootinfo_spinor.bin u-boot.itb ec.bin
 
 die()  { echo "$*" >&2; exit 1; }
 step() { printf '\n== %s\n' "$*"; }
-usage() { die "usage: $0 [--check] [--rm] <image-dir | bianbu-release.tar.gz>"; }
+usage() { die "usage: $0 [--check | --register-image] [--rm] [--download-dir DIR] <image-dir | bianbu-release.tar.gz | https://...tar.gz>"; }
+
+# The sdcard .img.gz images sit right next to the tarballs — refuse early.
+check_tarball_name() {
+    case $1 in
+        *.tar.gz|*.tgz) ;;
+        *) die "not a release tarball (.tar.gz): $1" ;;
+    esac
+}
 
 # Fail before any fastboot traffic, not mid-flash: every needed file must
 # exist and be non-empty (a disk-full extraction can leave truncated files).
@@ -92,7 +105,7 @@ verify_archive() {
             die "$name: archive contains unsafe member paths"
         fi
         sha=$(sha256sum "$1"); sha=${sha%% *}
-        echo "if this is a good release, pin it — append to $(basename "$MANIFEST"):"
+        echo "if this is a good release, pin it with --register-image, or append to $(basename "$MANIFEST"):"
         echo "$sha  $(stat -c %s "$1")  $name"
     fi
     ARCHIVE_SHA=$sha
@@ -119,18 +132,95 @@ extract_archive() {
     trap - EXIT
 }
 
-CHECK=0 RM=0 ARG=
+# Fetch an https release URL into DL_DIR. Atomic like extract_archive
+# (.partial + mv), so a file already in DL_DIR is always a completed
+# download and safe to reuse — verification still gates it either way.
+download_archive() {
+    local name dest
+    name=${1%%\?*}; name=${name%%#*}; name=$(basename "$name")
+    check_tarball_name "$name"
+    dest=$DL_DIR/$name
+    if [[ -f $dest ]]; then
+        step "Using already-downloaded $dest"
+    else
+        command -v curl >/dev/null || die "curl not found"
+        mkdir -p "$DL_DIR"
+        PARTIAL=$DL_DIR/.$name.partial
+        rm -f "$PARTIAL"
+        trap 'rm -rf "$PARTIAL"' EXIT
+        step "Downloading $name to $DL_DIR"
+        # The --proto pins keep every hop https, redirects included.
+        curl -fL --proto '=https' --proto-redir '=https' -o "$PARTIAL" "$1"
+        mv "$PARTIAL" "$dest"
+        trap - EXIT
+    fi
+    ARG=$dest
+}
+
+# --register-image: pin a release in the manifest. An already-pinned name is
+# re-verified against its entry instead of duplicated. An unknown tarball
+# must survive the member-path scan AND contain every REQUIRED file — that
+# keeps a random tarball (or a source archive) out of the manifest.
+register_image() {
+    local name size sha members f
+    name=$(basename "$1")
+    size=$(stat -c %s "$1")
+    if manifest_lookup "$name"; then
+        step "Verifying already-registered $name"
+        [[ $size -eq $MAN_SIZE ]] ||
+            die "$name: size $size != pinned $MAN_SIZE — file and manifest disagree"
+        sha=$(sha256sum "$1"); sha=${sha%% *}
+        [[ $sha == "$MAN_SHA" ]] ||
+            die "$name: sha256 differs from pinned entry — file and manifest disagree"
+        echo "ok: already in $(basename "$MANIFEST") and matching"
+        return 0
+    fi
+    step "Checking $name before registering"
+    members=$(tar -tzf "$1") || die "$name: unreadable archive"
+    if grep -qE '^/|(^|/)\.\.(/|$)' <<<"$members"; then
+        die "$name: archive contains unsafe member paths"
+    fi
+    for f in "${REQUIRED[@]}"; do
+        grep -qFx -e "./$f" -e "$f" <<<"$members" ||
+            die "$name: no $f in archive — not a Bianbu K3 release?"
+    done
+    sha=$(sha256sum "$1"); sha=${sha%% *}
+    printf '%s  %s  %s\n' "$sha" "$size" "$name" >>"$MANIFEST"
+    echo "registered in $(basename "$MANIFEST"): $sha  $size  $name"
+}
+
+CHECK=0 RM=0 REGISTER=0 ARG='' DL_DIR=''
 while (( $# )); do
     case $1 in
-        --check)   CHECK=1 ;;
-        --rm)      RM=1 ;;
-        -h|--help) usage ;;
-        -*)        usage ;;
-        *)         [[ -n $ARG ]] && usage; ARG=$1 ;;
+        --check)          CHECK=1 ;;
+        --rm)             RM=1 ;;
+        --register-image) REGISTER=1 ;;
+        --download-dir)   [[ $# -ge 2 ]] || usage; DL_DIR=$2; shift ;;
+        -h|--help)        usage ;;
+        -*)               usage ;;
+        *)                [[ -n $ARG ]] && usage; ARG=$1 ;;
     esac
     shift
 done
 [[ -n $ARG ]] || usage
+(( REGISTER && CHECK )) && die "--register-image and --check are mutually exclusive"
+(( REGISTER && RM ))    && die "--rm does not apply to --register-image"
+
+# An https URL is downloaded first, then handled like a local tarball.
+case $ARG in
+    https://*) DL_DIR=${DL_DIR:-$SCRIPT_DIR/../downloads}
+               download_archive "$ARG" ;;
+    http://*)  die "refusing plain http — use https" ;;
+    *)         [[ -n $DL_DIR ]] && die "--download-dir only applies to an https:// image URL" ;;
+esac
+
+if (( REGISTER )); then
+    [[ -d $ARG ]] && die "--register-image takes a tarball, not a directory"
+    [[ -f $ARG ]] || die "no such file: $ARG"
+    check_tarball_name "$ARG"
+    register_image "$ARG"
+    exit 0
+fi
 
 if [[ -d $ARG ]]; then
     # Untarred-dir mode. --rm is refused: never delete a directory this
@@ -138,11 +228,7 @@ if [[ -d $ARG ]]; then
     (( RM )) && die "--rm only applies to archive mode"
     IMG_DIR=$ARG
 elif [[ -f $ARG ]]; then
-    case $ARG in
-        *.tar.gz|*.tgz) ;;
-        # Catches e.g. the sdcard .img.gz that sits next to the tarballs.
-        *) die "not a release tarball (.tar.gz): $ARG" ;;
-    esac
+    check_tarball_name "$ARG"
     verify_archive "$ARG"
     stem=$(basename "$ARG"); stem=${stem%.tar.gz}; stem=${stem%.tgz}
     IMG_DIR=$IMAGES_DIR/$stem
