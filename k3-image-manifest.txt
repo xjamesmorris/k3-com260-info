@@ -1,0 +1,8 @@
+# k3-image-manifest.txt — known-good Bianbu K3 release tarballs for
+# k3-flash-bianbu.sh. Fields (whitespace-separated, one archive per line):
+#   sha256  size-bytes  archive-filename
+# The filename (basename) is the lookup key. To add a release, run the
+# script once with the new tarball — it prints a paste-ready line.
+# Releases: https://archive.spacemit.com/image/k3/version/bianbu/
+1584b1607c564104e4dcfd0253e5c86cf80d8d6a59b2b20fa61f4550fcb656d1  386934093   Bianbu-Minimal-K3-v4.0.1-20260521183730.tar.gz
+b74a76b233b4e8f676b57ef628412db09988a56c25d30507172d6fd775bf6eaf  2383123950  Bianbu-LXQt-K3-v4.0.4-20260717093818.tar.gz

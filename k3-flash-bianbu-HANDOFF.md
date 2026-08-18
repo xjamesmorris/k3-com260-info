@@ -48,26 +48,44 @@ partitions.
 | `Bianbu-Minimal-K3-v4.0.1-20260521183730` | full flash OK, boots from UFS |
 | `Bianbu-LXQt-K3-v4.0.4-20260717093818` | in progress at handoff time |
 
+## Implemented since handoff
+
+- **Archive mode:** pass the release `.tar.gz` directly. It is verified
+  against `k3-image-manifest.txt` (sha256 + size of each known release,
+  size checked first so a truncated download fails instantly) and extracted
+  atomically to `images/<release>/` next to the script (gitignored). A
+  matching existing extraction is reused — re-runs after a partial flash
+  stay cheap. Unknown archive names warn, get a member-path safety scan,
+  and the script prints a paste-ready manifest line; appending that line is
+  the whole new-release procedure.
+- **Preflight:** required files are checked for presence and non-emptiness
+  before any fastboot traffic, in both modes. `--check` runs every
+  verification step (manifest, extraction, contents) without flashing.
+- **`--rm`:** deletes `images/<release>/` only after a fully successful
+  flash (archive mode only; the `.tar.gz` itself is never touched).
+- shellcheck clean.
+
 ## Development ideas (unimplemented)
 
 - Select partition JSONs dynamically via `getvar mtd-size` / `blk-size` like
   the yaml does, instead of hardcoding the two filenames.
 - Parse `fastboot.yaml` directly (it ships in every tarball) so new releases
   can't drift from the script.
-- `--dry-run`, `--firmware-only` (skip bootfs/rootfs — that variant is exactly
-  the Fedora wiki's "convert firmware to U-Boot" step), `--os-only`.
-- Auto-untar: accept the `.tar.gz` as the argument.
-- shellcheck clean; trap for partial-flash state message on error.
+- `--dry-run` (print the flash commands), `--firmware-only` (skip
+  bootfs/rootfs — exactly the firmware-refresh step of the Fedora
+  conversion), `--os-only`.
+- Trap for a partial-flash state message on error.
 
 ## Wider project context
 
 The script exists so a factory restore → Fedora conversion is fully
 reproducible for a blog post + public repo. The Fedora side (NVMe root, EFI
-zboot unwrap, DTB regulator fix) is documented in the project wiki
-(`K3/wiki/10-fedora-bringup.md`); the restore procedure is in
-`K3/wiki/07-carrier-board-reference.md`. Bianbu release tarballs:
+zboot unwrap, DTB regulator fix) and the carrier-board restore procedure are
+documented separately and will be published alongside this repo. Bianbu
+release tarballs:
 <https://archive.spacemit.com/image/k3/version/bianbu/> (JS file browser:
 <https://spacemit.com/community/resources-download/Images%20Collects/K3/Bianbu>).
-Firmware-version caution: the Fedora wiki pins **U-Boot from Bianbu v4.0.1**
-("issues with their firmware builds" on newer) — untested whether v4.0.4's
-U-Boot fixes or inherits the `bootefi`+NVMe reset bug documented in the wiki.
+Firmware-version caution: the Fedora conversion pins **U-Boot from Bianbu
+v4.0.1** ("issues with their firmware builds" on newer) — untested whether
+v4.0.4's U-Boot fixes or inherits the `bootefi`+NVMe reset bug seen during
+Fedora bring-up.
