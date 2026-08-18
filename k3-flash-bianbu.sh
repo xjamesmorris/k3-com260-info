@@ -272,13 +272,15 @@ cd "$IMG_DIR"
 # '< waiting for any device >'.
 wait_for_device() {
     local t=0 out
+    printf 'waiting for re-enumeration'
     while :; do
         out=$(timeout 5 fastboot getvar version 2>&1) || true
         case $out in
-            *version:*|*'FAILED (remote'*) return 0 ;;
+            *version:*|*'FAILED (remote'*) echo ' ok'; return 0 ;;
         esac
+        printf '.'
         sleep 1
-        (( ++t > 30 )) && { echo "device did not re-enumerate" >&2; exit 1; }
+        (( ++t > 30 )) && { echo; echo "device did not re-enumerate" >&2; exit 1; }
     done
 }
 
@@ -287,8 +289,33 @@ wait_for_device() {
 # the version-brom probe fails and the FSBL stage is skipped — matching the
 # skip_when logic in fastboot.yaml.
 
+# The first fastboot command must never run bare: with no usable device
+# (board not in recovery, USB-C not connected, udev perms) fastboot blocks
+# forever on '< waiting for any device >' — and the old pipe-to-grep
+# swallowed that message, so the script sat at "BootROM check" silently.
+# Poll the same probe under timeout with visible progress instead; its
+# answer also tells us the entry stage (BootROM answers 'version-brom: ...',
+# a later stage answers remote FAILED — either way the transport is up).
+# fastboot.yaml puts a 1 s timeout on this exact getvar for the same reason.
+step "Waiting for fastboot device (Ctrl-C to abort)"
+t=0 IN_BROM=
+while [[ -z $IN_BROM ]]; do
+    out=$(timeout 5 fastboot getvar version-brom 2>&1) || true
+    if grep -q '^version-brom' <<<"$out"; then
+        IN_BROM=1
+    elif [[ $out == *'FAILED (remote'* ]]; then
+        IN_BROM=0
+    else
+        printf '.'
+        (( t == 6 )) && printf '\nno device yet — recovery entry: hold FC_REC (pin 10 -> GND), power on or pulse RST, release, connect USB-C\n'
+        (( ++t >= 24 )) && { echo
+            die "no fastboot device after ~2 min; check 'fastboot devices' (a 'no permissions' entry means udev rules are missing)"; }
+    fi
+done
+echo
+
 step "BootROM check"
-if fastboot getvar version-brom 2>&1 | grep -q '^version-brom'; then
+if (( IN_BROM )); then
     step "Stage FSBL"
     fastboot stage factory/FSBL.bin
     fastboot continue

@@ -67,6 +67,15 @@ partitions.
   is reused) to `../downloads/` relative to the script, or `--download-dir
   DIR`, then handled like a local tarball. Composes with flashing, `--check`
   and `--register-image`.
+- **Initial device wait:** the first BootROM probe used to run bare
+  `fastboot getvar`, which blocks forever when no fastboot device is present
+  (board not in recovery / USB not connected / udev perms) — and the pipe to
+  `grep` swallowed `< waiting for any device >`, so the script hung silently
+  at "BootROM check". It now polls the probe under `timeout` with progress
+  dots, prints a recovery-entry hint after ~35 s, and gives up at ~2 min
+  (fastboot.yaml puts a 1 s timeout on this same getvar). The probe's answer
+  doubles as the stage decision: `version-brom:` = BootROM, remote `FAILED`
+  = already past it. `wait_for_device()` prints progress dots too.
 - **Preflight:** required files are checked for presence and non-emptiness
   before any fastboot traffic, in both modes. `--check` runs every
   verification step (manifest, extraction, contents) without flashing.
