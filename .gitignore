@@ -1,0 +1,6 @@
+# Extraction area used by k3-flash-bianbu.sh archive mode (multi-GB)
+/images/
+# Release archives may be parked in the repo dir; never commit them
+*.tar.gz
+*.tgz
+*.img.gz
