@@ -41,12 +41,33 @@ partitions.
   format at header magic" (fastboot then sends sparse chunks fine).
 - NVMe is untouched by the flash; UFS and NOR env are wiped.
 
-## Verified runs
+## Known images
 
-| Image | Result |
-|---|---|
-| `Bianbu-Minimal-K3-v4.0.1-20260521183730` | full flash OK, boots from UFS |
-| `Bianbu-LXQt-K3-v4.0.4-20260717093818` | in progress at handoff time |
+Two independent senses of "verified" — don't conflate them. **Pinned** means
+the tarball has an sha256 + size entry in `k3-image-manifest.txt` and passed
+the `--register-image` gate (member-path scan, every required file present in
+the listing), so a flash run can prove the bytes before writing them.
+**Flashed** means observed on real hardware.
+
+| Image (`.tar.gz`) | Pinned | Flashed |
+|---|---|---|
+| `Bianbu-Minimal-K3-v4.0.1-20260521183730` | yes | full flash OK, boots from UFS |
+| `Bianbu-LXQt-K3-v4.0.1-20260521185240` | yes | not recorded |
+| `Bianbu-LXQt-K3-v4.0.4-20260717093818` | yes | started, outcome never recorded |
+
+The two right-hand entries need a hardware result filled in; both were pinned
+from local tarballs rather than from a completed flash.
+
+**The two v4.0.1 images share one firmware set.** Every file the script
+writes outside the OS partitions is byte-identical (full sha256) between
+Minimal v4.0.1 and LXQt v4.0.1 — the whole NOR chain (`bootinfo_spinor.bin`,
+`FSBL.bin`, `env.bin`, `esos.itb`, `fw_dynamic.itb`, `u-boot.itb`) plus
+`ec.bin`. They differ only in `bootfs.ext4` and `rootfs.ext4` (2 GB vs 8 GB).
+Consequences: the U-Boot the Fedora conversion pins to v4.0.1 can come from
+either image, whichever is to hand; a firmware-only refresh from one is
+exactly equivalent to the other; and the 386 MB Minimal tarball is the
+cheaper source for it. v4.0.4 differs on all of those **except**
+`bootinfo_spinor.bin`, which is identical across all three releases.
 
 ## Implemented since handoff
 
@@ -106,4 +127,5 @@ release tarballs:
 Firmware-version caution: the Fedora conversion pins **U-Boot from Bianbu
 v4.0.1** ("issues with their firmware builds" on newer) — untested whether
 v4.0.4's U-Boot fixes or inherits the `bootefi`+NVMe reset bug seen during
-Fedora bring-up.
+Fedora bring-up. Either v4.0.1 image satisfies that pin: see "Known images"
+for the byte-identical firmware finding.
