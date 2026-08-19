@@ -25,7 +25,8 @@
 #                       relative to this script)
 #
 # Erases NOR firmware + all UFS contents. NVMe is not touched.
-# Verified on K3-CoM260 (Firefly kit), Bianbu v4.0.1 Minimal and v4.0.4 LXQt.
+# Full flash verified on K3-CoM260 (Firefly kit) with Bianbu v4.0.1 Minimal;
+# see the Status table in README.md for the other releases.
 
 set -euo pipefail
 
