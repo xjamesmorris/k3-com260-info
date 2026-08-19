@@ -195,6 +195,12 @@ the two filenames that suit the CoM260.
 protocol findings measured on real boards, design rationale, and the list of
 unimplemented ideas.
 
+## License
+
+GPL-2.0-only. See [`LICENSE`](LICENSE).
+
+Copyright © 2026 James Morris.
+
 ## Contributing
 
 Bug reports and patches are welcome, particularly hardware results from other

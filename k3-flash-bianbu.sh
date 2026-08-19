@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2026 James Morris <jmorris@namei.org>
+#
 # k3-flash-bianbu.sh — full factory flash of a SpacemiT K3 (CoM260 tested)
 # from an official Bianbu K3 release tarball, using plain fastboot.
 #
