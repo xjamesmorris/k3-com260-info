@@ -1,0 +1,41 @@
+System:
+  Kernel: 6.19.8-200.0.riscv64.fc43.riscv64 arch: riscv64 bits: 64 compiler: gcc v: 15.2.1
+    clocksource: riscv_clocksource
+  Console: pty pts/0 Distro: Fedora Linux 44 (Cloud Edition)
+Machine:
+  Type: RISCV System: riscv-virtio,qemu details: N/A
+CPU:
+  Info: quad core model: N/A variant: riscv bits: 64 type: MCP smt: <unsupported> arch: riscv64
+  Speed: N/A min/max: N/A cores: No per core speed data found. bogomips: N/A
+  Features: N/A
+Graphics:
+  Message: No RISCV data found for this feature.
+  Display: unspecified server: N/A driver: N/A tty: 204x79
+  API: N/A Message: No API data available in console. Headless machine?
+  Info: Tools: x11: xdpyinfo, xprop, xrandr
+Audio:
+  Message: No RISCV data found for this feature.
+  API: ALSA v: k6.19.8-200.0.riscv64.fc43.riscv64 status: inactive
+Network:
+  Message: No RISCV data found for this feature.
+  IF-ID-1: eth0 state: up speed: -1 duplex: unknown mac: <filter>
+Drives:
+  Local Storage: total: 20 GiB used: 1020.4 MiB (5.0%)
+  ID-1: /dev/vda model: N/A size: 20 GiB tech: N/A serial: N/A scheme: GPT
+  ID-2: /dev/vdb model: N/A size: 366 KiB tech: N/A serial: N/A
+Partition:
+  ID-1: / size: 19.9 GiB used: 1004.6 MiB (4.9%) fs: btrfs dev: /dev/vda2
+  ID-2: /boot size: 19.9 GiB used: 1004.6 MiB (4.9%) fs: btrfs dev: /dev/vda2
+  ID-3: /boot/efi size: 99.8 MiB used: 15.8 MiB (15.9%) fs: vfat dev: /dev/vda1
+  ID-4: /home size: 19.9 GiB used: 1004.6 MiB (4.9%) fs: btrfs dev: /dev/vda2
+  ID-5: /var size: 19.9 GiB used: 1004.6 MiB (4.9%) fs: btrfs dev: /dev/vda2
+Swap:
+  ID-1: swap-1 type: zram size: 3.79 GiB used: 0 KiB (0.0%) priority: 100 dev: /dev/zram0
+Sensors:
+  Src: lm-sensors+/sys Message: No sensor data found using /sys/class/hwmon or lm-sensors.
+Info:
+  Memory: total: 4 GiB available: 3.79 GiB used: 365 MiB (9.4%)
+  Processes: 128 Power: uptime: 28m states: freeze,mem,disk suspend: s2idle wakeups: 0
+    hibernate: shutdown Init: systemd v: 259 default: multi-user
+  Packages: pm: rpm pkgs: N/A note: see --rpm Compilers: N/A Shell: Bash v: 5.3.9
+    running-in: pty pts/0 (SSH) inxi: 3.3.40

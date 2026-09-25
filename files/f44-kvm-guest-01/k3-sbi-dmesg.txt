@@ -1,0 +1,18 @@
+[    0.000000] SBI specification v3.0 detected
+[    0.000000] SBI implementation ID=0x3 Version=0x70300
+[    0.000000] SBI TIME extension detected
+[    0.000000] SBI IPI extension detected
+[    0.000000] SBI RFENCE extension detected
+[    0.000000] SBI SRST extension detected
+[    0.000000] SBI DBCN extension detected
+[    0.000000] SBI FWFT extension detected
+[    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+[    0.000000] printk: legacy bootconsole [sbi0] enabled
+[    0.000000] SBI HSM extension detected
+[    0.000000] Kernel command line: no_timer_check console=tty1 console=ttyS0,115200n8 systemd.firstboot=off root=UUID=3ffbbe68-1f01-49a4-8454-bf0ce0d84f8f rootflags=subvol=root console=ttyS0,115200n8 earlycon=sbi unaligned_scalar_speed=slow unaligned_vector_speed=unsupported
+[    0.000000] riscv: providing IPIs using SBI IPI extension
+[    0.000086] riscv-pv: SBI STA extension detected
+[    0.155639] printk: legacy bootconsole [sbi0] disabled
+[    0.175342] riscv-pmu-sbi: SBI PMU extension is available
+[    0.176296] riscv-pmu-sbi: 22 firmware and 18 hardware counters
+[    0.177466] riscv-pmu-sbi: SBI PMU snapshot detected

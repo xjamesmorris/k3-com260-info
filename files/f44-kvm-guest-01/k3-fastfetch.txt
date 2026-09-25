@@ -1,0 +1,36 @@
+             .',;::::;,'.
+         .';:cccccccccccc:;,.
+      .;cccccccccccccccccccccc;.
+    .:cccccccccccccccccccccccccc:.
+  .;ccccccccccccc;.:dddl:.;ccccccc;.
+ .:ccccccccccccc;OWMKOOXMWd;ccccccc:.
+.:ccccccccccccc;KMMc;cc;xMMc;ccccccc:.
+,cccccccccccccc;MMM.;cc;;WW:;cccccccc,
+:cccccccccccccc;MMM.;cccccccccccccccc:
+:ccccccc;oxOOOo;MMM000k.;cccccccccccc:
+cccccc;0MMKxdd:;MMMkddc.;cccccccccccc;
+ccccc;XMO';cccc;MMM.;cccccccccccccccc'
+ccccc;MMo;ccccc;MMW.;ccccccccccccccc;
+ccccc;0MNc.ccc.xMMd;ccccccccccccccc;
+cccccc;dNMWXXXWM0:;cccccccccccccc:,
+cccccccc;.:odl:.;cccccccccccccc:,.
+ccccccccccccccccccccccccccccc:'.
+:ccccccccccccccccccccccc:;,..
+ ':cccccccccccccccc::;,.[1G[18A[42Cfedora@k3-fedora-guest
+[42C----------------------
+[42COS: Fedora Linux 44 (Cloud Edition) riscv64
+[42CHost: riscv-virtio,qemu
+[42CKernel: Linux 6.19.8-200.0.riscv64.fc43.riscv64
+[42CUptime: 16 mins
+[42CPackages: 426 (rpm)
+[42CShell: bash 5.3.9
+[42CTerminal: sshd
+[42CCPU: rv64gcv (4)
+[42CMemory: 320.01 MiB / 3.79 GiB (8%)
+[42CSwap: 0 B / 3.79 GiB (0%)
+[42CDisk (/): 949.54 MiB / 19.90 GiB (5%) - btrfs
+[42CLocal IP (eth0): 10.0.2.15/24
+[42CLocale: en_US.UTF-8
+[42C
+[42C[40m   [41m   [42m   [43m   [44m   [45m   [46m   [47m   [m
+[42C[5m[100m   [101m   [102m   [103m   [104m   [105m   [106m   [107m   [m
