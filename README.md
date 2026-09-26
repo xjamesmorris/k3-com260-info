@@ -29,6 +29,15 @@ export HOWTO="$WORK/k3-com260-info/k3-com260-fedora-howto"
 A GitHub wiki is planned for longer-form board documentation and notes.
 More scripts and patches will be added as the work develops.
 
+## External Resources
+
+- [Bo Gan's collection of docs](https://github.com/ganboing/K3-Docs) and & great info on firmware hacking, JTAG, etc. Look there if you are unable to find or reach a vendor document due to CN server / network overload, which seems to happen at times.
+
+- [Fedora RISC-V SIG](https://fedoraproject.org/wiki/Architectures/RISC-V),  home & starting point for RISC-V on Fedora specifically.
+
+- [SpaceMit K3 Forums](https://forum.spacemit.com/c/25-category/25), lots of good info in a mixture of languages, with English well-supported. Protip: use an agent to summarize & translate activity there.
+
+  
 ## Hardware and results
 
 The flashing and Fedora bring-up work was done with a
