@@ -1,0 +1,65 @@
+From e5c5b7735439e40eb8ed6522174bc9a760c99c5d Mon Sep 17 00:00:00 2001
+From: James Morris <jmorris@namei.org>
+Date: Tue, 22 Sep 2026 19:25:23 -0700
+Subject: [RFC PATCH] riscv: dts: spacemit: k3-com260: keep dldo4 enabled
+
+dldo4 on the P1 PMIC is marked regulator-boot-on, but has no consumer
+described in the device tree.  The regulator core can therefore disable
+the firmware-enabled rail during unused-regulator cleanup.
+
+Reproduce the resulting failure on a K3 CoM260 IFX using the current
+SpacemiT for-next tree plus the local K3 PCIe enablement needed for NVMe
+and the RTL8852BE endpoint.
+
+Without this change, dldo4 was disabled at 31.857578 seconds.  CPU1
+hard-locked at 44.017326 seconds, the other CPUs stalled in
+smp_call_function_many_cond() from TLB-flush paths, and RCU reported a
+stalled grace-period thread.
+
+In a matched test with the same source, configuration, toolchain, PCIe
+graph, boot arguments, and root filesystem, adding only
+regulator-always-on kept dldo4 enabled.  NVMe and RTL8852BE remained
+active, and the system was healthy at 302.45 seconds with no lockup,
+RCU-stall, panic, or Oops report.  This is one boot, not a long-term
+stability claim.
+
+The actual hardware consumer is not documented.  Describing that supply
+relationship would be preferable; preserve the firmware state until it
+is known.
+
+All other regulator-boot-on rails in this PMIC block are also marked
+regulator-always-on; dldo4 is the sole exception.  This RFC asks whether
+dldo4 supplies an undocumented K3 or PCIe dependency and whether a supply
+relationship should be described instead.
+
+The same dldo4 description is present on K3 Pico-ITX, but that board was
+not tested and is not changed here.  Do not route this RFC to stable yet:
+the reproducer requires K3 PCIe enablement that is not in released
+mainline kernels.
+
+GitHub Copilot assisted with diagnosis, build and test automation, and
+changelog drafting.
+
+Fixes: cfe5c91cb73c ("riscv: dts: spacemit: k3: Initial support for CoM260-IFX board")
+Assisted-by: LLM
+---
+ arch/riscv/boot/dts/spacemit/k3-com260.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/riscv/boot/dts/spacemit/k3-com260.dtsi b/arch/riscv/boot/dts/spacemit/k3-com260.dtsi
+index 92dea8639779..054bfff7413a 100644
+--- a/arch/riscv/boot/dts/spacemit/k3-com260.dtsi
++++ b/arch/riscv/boot/dts/spacemit/k3-com260.dtsi
+@@ -187,6 +187,7 @@ dldo3: dldo3 {
+ 			dldo4: dldo4 {
+ 				regulator-min-microvolt = <1800000>;
+ 				regulator-max-microvolt = <1800000>;
++				regulator-always-on;
+ 				regulator-boot-on;
+ 			};
+ 
+
+base-commit: 4b98722be2911a922fb29b54adccdee46f6a9f41
+-- 
+2.55.0
+

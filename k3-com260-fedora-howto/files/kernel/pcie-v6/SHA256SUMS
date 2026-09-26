@@ -1,0 +1,6 @@
+e69e9802b4969414754c60cf569281337e0b7925be87b5b92ccc63e99dbd1efd  0001-PCI-spacemit-k1-Add-device-data-support.patch
+c2732369b6b1fd205947e86341b71a81840637d4fe311ba0b19a12fb46ddf3df  0002-PCI-spacemit-k1-Add-multiple-PHY-handles-support.patch
+0c68a162549332d021e4435d43b2e5459f706c873bd60b4a990e63851907322f  0003-PCI-spacemit-k1-Add-device-id-update-helper.patch
+26550945f62dade540a7d531b134e56cec88f3605e01de0869cb1040fa39d030  0004-dt-bindings-PCI-snps-dw-pcie-Add-msi-parent.patch
+fb58657414ba61493cefe5e74a8a2f2b3cd4d0669abb0fb6c1d0f50ae26d784f  0005-dt-bindings-PCI-spacemit-Introduce-K3-host.patch
+db2e1fdeadf81ccccd1e52cbe21c1374fc53f2c6d83b0f17b16dffaa51c3791e  0006-PCI-spacemit-k1-Add-K3-host-controller.patch

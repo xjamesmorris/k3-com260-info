@@ -1,0 +1,150 @@
+From dd2735d11483da9363bb4b6c09c237284c2010ef Mon Sep 17 00:00:00 2001
+From: Jennifer Berringer <jberring@redhat.com>
+Date: Thu, 24 Sep 2026 02:33:17 -0700
+Subject: [PATCH 2/2] riscv: dts: spacemit: k3-com260-ifx: Enable PCIe
+
+Enable PCIe0 for the M.2 M-key 2280 slot, PCIe3 for the M.2 M-key 2230
+slot, and PCIe4 for the M.2 E-key 2230 slot.
+
+Configure the board-wide combo-PHY mux to route lane group 2 to USB3-B
+while keeping the PCIe-A, PCIe-D, and PCIe-E lane groups used by these
+slots in PCIe mode. Add the required 3.3 V pinctrl states and system
+supply, and place PHY and supply references on the root-port nodes as
+required by the controller binding.
+
+The pending v6 driver still requests the slot supply from the controller
+device. A missing controller-level property resolves to a dummy regulator
+on a populated devicetree, so keep the DTS binding-conformant and leave
+that driver-side lookup to be corrected in the dependency.
+
+The E-key PEWAKE# input is routed by the carrier to the module's
+PCIEA_WAKEn pin. GPIO80 is therefore deliberately muxed to PCIEA_WAKEN
+inside the PCIe4 slot pinctrl state.
+
+The M.2 M-key 2230 connector has lanes from different PHY blocks, so
+limit the PCIe3 connection to a single lane.
+
+Leave USB controller and hub enablement to the separate USB series.
+
+Validation covered clean replay, relaxed DTS style, targeted PCI schema
+checks, K3 DTB builds, and the PCIe and combo-PHY objects. No hardware
+boot, link training, or endpoint enumeration was performed.
+
+Link: https://github.com/spacemit-com/linux-6.18/commit/c4a0701a564678fb1973df9ac5e7e8cce05c3571
+Assisted-by: LLM
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+---
+ .../riscv/boot/dts/spacemit/k3-com260-ifx.dts | 53 +++++++++++++++++++
+ arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi  | 37 +++++++++++++
+ 2 files changed, 90 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts b/arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts
+index a5c08a7a781a..dee0abf67ae9 100644
+--- a/arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts
++++ b/arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts
+@@ -18,6 +18,59 @@ aliases {
+ 	chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
++
++	reg_3v3_sys: regulator-3v3-sys {
++		compatible = "regulator-fixed";
++		regulator-name = "VDD_3V3_SYS";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++	};
++};
++
++&combophy {
++	spacemit,apmu = <&syscon_apmu 0x14>;
++	status = "okay";
++};
++
++&pcie0_port {
++	phys = <&combophy 0 PHY_TYPE_PCIE>,
++	       <&combophy 1 PHY_TYPE_PCIE>;
++	vpcie3v3-supply = <&reg_3v3_sys>;
++};
++
++&pcie0_rc {
++	/* M.2 M-Key 2280 slot */
++	pinctrl-names = "default";
++	pinctrl-0 = <&pcie0_1_cfg>;
++	num-lanes = <4>;
++	status = "okay";
++};
++
++&pcie3_port {
++	phys = <&combophy 4 PHY_TYPE_PCIE>;
++	vpcie3v3-supply = <&reg_3v3_sys>;
++};
++
++&pcie3_rc {
++	/* M.2 M-Key 2230 slot */
++	pinctrl-names = "default";
++	pinctrl-0 = <&pcie3_0_cfg>;
++	num-lanes = <1>;
++	status = "okay";
++};
++
++&pcie4_port {
++	phys = <&combophy 5 PHY_TYPE_PCIE>;
++	vpcie3v3-supply = <&reg_3v3_sys>;
++};
++
++&pcie4_rc {
++	/* M.2 E-Key 2230 slot */
++	pinctrl-names = "default";
++	pinctrl-0 = <&pcie4_1_cfg>;
++	num-lanes = <1>;
++	status = "okay";
+ };
+ 
+ &i2c1 {
+diff --git a/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi b/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
+index cb4f4f4e33af..039aa59e7aa3 100644
+--- a/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
++++ b/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
+@@ -788,4 +788,41 @@ mmc1-uhs-clk-pins {
+ 			power-source = <1800>;
+ 		};
+ 	};
++
++	/omit-if-no-ref/
++	pcie0_1_cfg: pcie0-1-cfg {
++		pcie0-1-pins {
++			pinmux = <K3_PADCONF(79, 5)>,	/* pcie0 perst */
++				 <K3_PADCONF(81, 5)>;	/* pcie0 clkreq */
++
++			bias-pull-up = <1>;
++			drive-strength = <38>;
++			power-source = <3300>;
++		};
++	};
++
++	/omit-if-no-ref/
++	pcie3_0_cfg: pcie3-0-cfg {
++		pcie3-0-pins {
++			pinmux = <K3_PADCONF(3, 4)>,	/* pcie3 perst */
++				 <K3_PADCONF(5, 4)>;	/* pcie3 clkreq */
++
++			bias-pull-up = <1>;
++			drive-strength = <38>;
++			power-source = <3300>;
++		};
++	};
++
++	/omit-if-no-ref/
++	pcie4_1_cfg: pcie4-1-cfg {
++		pcie4-1-pins {
++			pinmux = <K3_PADCONF(76, 5)>,	/* pcie4 perst */
++				 <K3_PADCONF(80, 5)>,	/* M.2 E-key wake */
++				 <K3_PADCONF(78, 5)>;	/* pcie4 clkreq */
++
++			bias-pull-up = <1>;
++			drive-strength = <38>;
++			power-source = <3300>;
++		};
++	};
+ };

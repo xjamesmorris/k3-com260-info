@@ -1,0 +1,225 @@
+From mboxrd@z Thu Jan  1 00:00:00 1970
+Return-Path: <linux-phy-bounces+linux-phy=archiver.kernel.org@lists.infradead.org>
+X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
+	aws-us-west-2-korg-lkml-1.web.codeaurora.org
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.lore.kernel.org (Postfix) with ESMTPS id B2347C982FA
+	for <linux-phy@archiver.kernel.org>; Wed, 23 Sep 2026 02:34:06 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=lists.infradead.org; s=bombadil.20210309; h=Sender:
+	Content-Transfer-Encoding:Content-Type:List-Subscribe:List-Help:List-Post:
+	List-Archive:List-Unsubscribe:List-Id:MIME-Version:References:In-Reply-To:
+	Message-ID:Date:Subject:Cc:To:From:Reply-To:Content-ID:Content-Description:
+	Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:
+	List-Owner; bh=E6BIcoMw5KLQndzpBAh90oBG0W+3PPYRLj5sB53D0oo=; b=yFm6GZhI7wqTbH
+	perKHMgBMwrvkdZHMIn2Nte6pSUCpiHwolV2XVxBwnOUD00w9Yo2YbW9qEDAYQIh/c9KxuGQ8dyuc
+	9eh8vr7+7PlMJ2PTbEvYssH/n/huqGKTZE6ldcc7/pvpQOzJVc8DT7BgJdHtBSeOPiKGNOB51LRm3
+	55rVHh0grT9ORttu95GLLymQP7EA55CImf8upfMWRUu0znHRP4Vml6l7nP/83F77Kl7q0fP2uTZOT
+	aexDi9qF+5tjPJwjrTzjBYJ6Srh2cewTgZxOtv3U5CrGVHMl83u/gaRU1QibgdCBrPHRHCtQeNuHg
+	DODKm5nzi9Cv0B7Vr50A==;
+Received: from localhost ([::1] helo=bombadil.infradead.org)
+	by bombadil.infradead.org with esmtp (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1x9CoA-00000006wpY-1gJi;
+	Wed, 23 Sep 2026 02:34:06 +0000
+Received: from mail-pj2-x10.google.com ([2607:f8b0:4864:39::10])
+	by bombadil.infradead.org with esmtps (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1x9Co7-00000006wor-2VCl
+	for linux-phy@lists.infradead.org;
+	Wed, 23 Sep 2026 02:34:04 +0000
+Received: by mail-pj2-x10.google.com with SMTP id d9443c01a7336-2d747ed1368so2840825ad.1
+        for <linux-phy@lists.infradead.org>; Tue, 22 Sep 2026 19:34:03 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1790130843; x=1790735643; darn=lists.infradead.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=igoxe3cxGkJq4SLiQXpcx4KeGIWifNJAVf3ouJtaOBU=;
+        b=OPOwPbWGTaktQ26HFtjQP4WQfi5ZjbyEWO1lRM2tN2FZsAnrFgbz+F4KrIOS0KIGH5
+         c27d0xm9+nnKKof63Lwkxmz8qmPlRDhv/5qBj5QxT6Z/yMQ0uhiI0BnSd/0tDsOAAw1K
+         lCZzCBz+qnFCGSVbqarkKIgnJH+qAHunAUQW06l/ujQPwAQqgdbZmphGPqd3D1sgmadR
+         oUGWqkhsegmdVfckvLisqCpgn3u1zMDlsgqVTP5Xy9wBtkuk/aYGNDbguISbksaXjc5Y
+         iBLzz8QlL97pjf/ukcOGzGLv2O25IO5O1feUDaGjkpGbL6hOQvUpP397J/Y+8fXSotFj
+         LkMA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790130843; x=1790735643;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=igoxe3cxGkJq4SLiQXpcx4KeGIWifNJAVf3ouJtaOBU=;
+        b=GzSijpmbnNSIVzcF6uGvoDhYyH3Ip7bBuUFJj7v/XXqmb3CXoaPwEdJffhp8cgGOKe
+         IlDRKz5y9EAOeM+siIhlS/IPjHTUgLsPbbUkmCUYYvuHpiSy7a4CHKKmwIMeOwNX0Yjr
+         JrArg3Oe8uSQ7wonjM91lTwm09CX8rEThArtSw+eEPsQNjChVV4VfOlFJ/ifcaIUOTCh
+         sqguQVYbMzJ8Q3K1YSL/1nk0YkZYzXEK72MSF6/u1Opz48Wk0zQqYxsv5tA0JMgJJR4y
+         faAaaj67yJwf9We+E8Fn+53vEYyLZXWlIswXdG2afAqQY9KvNx3UZTOZRG1TBq/CG5VA
+         18Tw==
+X-Forwarded-Encrypted: i=1; AKwUvBxXI1H5tPyGFd/3ujwAg3xH0h4S9Wcq+AO6NRlLuSdEWEpwqm83GNl5iezbHo12FS6jkUMdIh35gs4=@lists.infradead.org
+X-Gm-Message-State: AFuF++lmQijh1xFWYM+tcikT9BfKosdTQ9WBAn6V6oVM3mu8Myzk9cN5
+	k4c1cKrz3s4hyocLa50MLnkKYhDngq46aHxMwlWhRQuEotEZLbcsyQ1b28yVCGiK
+X-Gm-Gg: AYBFou1JrXEqWER82HHCrCZaAGsaNZsJo0cbo1wI6q9kr8lIuGJyOAmLfAjtjoR9qYv
+	G3f20uUMW517s8Cb/fesAT4l7vChJ088m/c78SiUvJ1phhGeOlYPo0oUYa+Cnh7pKh5iFUwcx/l
+	MEmSHEsp4cudRW1Tsalt9GxG9l+1ykY/8u+AFKWd9N6qihw6OQaZqRqfi0bSrcVoC235/TAYSfC
+	vuEWzub527E2Io601HuxvVODdvqMRx5eDufWyI7sW532DhD38spwnGA1pNppnkQ/kbuNGHWegvq
+	PjWIIMqENrGCstJcOmwohk1Fi0QmXhbfyPU+/C5CBa0UnHMMszPgOSuYaIf1WEm9fOetn8+RbMt
+	u70zrmaWXo7mTyB9+YLgmmZGQS57C0q26h6RpE+XMz4EtmB9kG6L0JW4Yb1pKS1THYUg8dxV1tD
+	57FnL7yk5ujgujX/fn5J7t3BwLAbQ7/ZKIsbeb+TP2tYVzSjUfbAxDvO8RGu1pUAITHXqOkEm86
+	XqqfdU=
+X-Received: by 2002:a17:903:1b4c:b0:2db:2427:97d5 with SMTP id d9443c01a7336-2df69d3704dmr11204435ad.4.1790130842671;
+        Tue, 22 Sep 2026 19:34:02 -0700 (PDT)
+Received: from localhost ([2001:19f0:8000:3e6e:5400:6ff:fe38:3d01])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2df6a5f79aesm3182785ad.74.2026.09.22.19.34.01
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 22 Sep 2026 19:34:02 -0700 (PDT)
+From: Inochi Amaoto <inochiama@gmail.com>
+To: Jonathan Corbet <corbet@lwn.net>,
+	Shuah Khan <skhan@linuxfoundation.org>,
+	Randy Dunlap <rdunlap@infradead.org>,
+	Vinod Koul <vkoul@kernel.org>,
+	Neil Armstrong <neil.armstrong@linaro.org>,
+	Manivannan Sadhasivam <mani@kernel.org>,
+	Rhys Tumelty <rhys@tumelty.co.uk>,
+	Inochi Amaoto <inochiama@gmail.com>
+Cc: linux-doc@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-phy@lists.infradead.org,
+	Yixun Lan <dlan@gentoo.org>,
+	Longbin Li <looong.bin@gmail.com>,
+	Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v3 1/5] phy: core: Add common helper to add phy phandle device link
+Date: Wed, 23 Sep 2026 10:32:59 +0800
+Message-ID: <20260923023304.78428-2-inochiama@gmail.com>
+X-Mailer: git-send-email 2.55.0
+In-Reply-To: <20260923023304.78428-1-inochiama@gmail.com>
+References: <20260923023304.78428-1-inochiama@gmail.com>
+MIME-Version: 1.0
+X-CRM114-Version: 20100106-BlameMichelson ( TRE 0.9.0 (BSD) ) MR-646709E3 
+X-CRM114-CacheID: sfid-20260922_193403_638879_0E998FF2 
+X-CRM114-Status: GOOD (  13.26  )
+X-BeenThere: linux-phy@lists.infradead.org
+X-Mailman-Version: 2.1.34
+Precedence: list
+List-Id: Linux Phy Mailing list <linux-phy.lists.infradead.org>
+List-Unsubscribe: <https://lists.infradead.org/mailman/options/linux-phy>,
+ <mailto:linux-phy-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-phy/>
+List-Post: <mailto:linux-phy@lists.infradead.org>
+List-Help: <mailto:linux-phy-request@lists.infradead.org?subject=help>
+List-Subscribe: <https://lists.infradead.org/mailman/listinfo/linux-phy>,
+ <mailto:linux-phy-request@lists.infradead.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Sender: "linux-phy" <linux-phy-bounces@lists.infradead.org>
+Errors-To: linux-phy-bounces+linux-phy=archiver.kernel.org@lists.infradead.org
+
+It is very common for adding a device link for phy phandle
+for device managed phy helper functions. So add a common
+helper for future reuse.
+
+Signed-off-by: Inochi Amaoto <inochiama@gmail.com>
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
+ drivers/phy/phy-core.c | 39 ++++++++++++++++++++++++---------------
+ 1 file changed, 24 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/phy/phy-core.c b/drivers/phy/phy-core.c
+index 21aaf2f76e53..7be649f14797 100644
+--- a/drivers/phy/phy-core.c
++++ b/drivers/phy/phy-core.c
+@@ -606,6 +606,27 @@ int phy_validate(struct phy *phy, enum phy_mode mode, int submode,
+ }
+ EXPORT_SYMBOL_GPL(phy_validate);
+ 
++/**
++ * phy_add_device_link() - Associate the phy with the device
++ * @dev: the device consuming the PHY
++ * @phy: the PHY supplied to @dev
++ *
++ * Add a device link with @dev as the consumer and @phy as the
++ * PHY supplier.
++ */
++static void phy_add_device_link(struct device *dev, struct phy *phy)
++{
++	struct device_link *link;
++
++	if (!phy)
++		return;
++
++	link = device_link_add(dev, &phy->dev, DL_FLAG_STATELESS);
++	if (!link)
++		dev_dbg(dev, "failed to create device link to %s\n",
++			dev_name(phy->dev.parent));
++}
++
+ /**
+  * _of_phy_get() - lookup and obtain a reference to a phy by phandle
+  * @np: device_node for which to get the phy
+@@ -784,7 +805,6 @@ struct phy *phy_get(struct device *dev, const char *string)
+ {
+ 	int index = 0;
+ 	struct phy *phy;
+-	struct device_link *link;
+ 
+ 	if (dev->of_node) {
+ 		if (string)
+@@ -808,10 +828,7 @@ struct phy *phy_get(struct device *dev, const char *string)
+ 
+ 	get_device(&phy->dev);
+ 
+-	link = device_link_add(dev, &phy->dev, DL_FLAG_STATELESS);
+-	if (!link)
+-		dev_dbg(dev, "failed to create device link to %s\n",
+-			dev_name(phy->dev.parent));
++	phy_add_device_link(dev, phy);
+ 
+ 	return phy;
+ }
+@@ -885,7 +902,6 @@ struct phy *devm_of_phy_get(struct device *dev, struct device_node *np,
+ 			    const char *con_id)
+ {
+ 	struct phy **ptr, *phy;
+-	struct device_link *link;
+ 
+ 	ptr = devres_alloc(devm_phy_release, sizeof(*ptr), GFP_KERNEL);
+ 	if (!ptr)
+@@ -900,10 +916,7 @@ struct phy *devm_of_phy_get(struct device *dev, struct device_node *np,
+ 		return phy;
+ 	}
+ 
+-	link = device_link_add(dev, &phy->dev, DL_FLAG_STATELESS);
+-	if (!link)
+-		dev_dbg(dev, "failed to create device link to %s\n",
+-			dev_name(phy->dev.parent));
++	phy_add_device_link(dev, phy);
+ 
+ 	return phy;
+ }
+@@ -955,7 +968,6 @@ struct phy *devm_of_phy_get_by_index(struct device *dev, struct device_node *np,
+ 				     int index)
+ {
+ 	struct phy **ptr, *phy;
+-	struct device_link *link;
+ 
+ 	ptr = devres_alloc(devm_phy_release, sizeof(*ptr), GFP_KERNEL);
+ 	if (!ptr)
+@@ -977,10 +989,7 @@ struct phy *devm_of_phy_get_by_index(struct device *dev, struct device_node *np,
+ 	*ptr = phy;
+ 	devres_add(dev, ptr);
+ 
+-	link = device_link_add(dev, &phy->dev, DL_FLAG_STATELESS);
+-	if (!link)
+-		dev_dbg(dev, "failed to create device link to %s\n",
+-			dev_name(phy->dev.parent));
++	phy_add_device_link(dev, phy);
+ 
+ 	return phy;
+ }
+-- 
+2.55.0
+
+
+-- 
+linux-phy mailing list
+linux-phy@lists.infradead.org
+https://lists.infradead.org/mailman/listinfo/linux-phy
+

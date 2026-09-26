@@ -1,0 +1,5 @@
+6950e41baf09b9e09fb8a02ac007a3b3bd3b3377c21effe1686488109790bcad  0001-phy-core-Add-phandle-device-link-helper.patch
+1e508374a9cd35eda973510b8e9d218b5308fa01a49ec8375153fdbc3e1c4177  0002-phy-core-Add-phandle-by-index-helper.patch
+2674c18087b47000f0eb8f495ce7bbac95f16647b3143d70c090e3b9b900cb33  0003-phy-core-Add-bulk-data-helpers.patch
+da8ce18b6c79b5c1cf64ead3eab8b244e0a8ec2bf3069a9a54a285656ea5ccec  0004-phy-core-Add-managed-bulk-data-helpers.patch
+046884b4f0422644c42fe76b2b951c492c5fbc5c3c849108ab3a20fc6082de3d  0005-doc-phy-Document-some-bulk-helper-functions.patch

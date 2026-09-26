@@ -9,20 +9,38 @@ rather than a single software project.
 
 ## Documentation and tools
 
+- [Fedora 44 and KVM how-to](k3-com260-fedora-howto/README.md): bootstrap Fedora
+  on NVMe with stock Bianbu/U-Boot, build and install a pinned KVM host kernel,
+  and prepare and run a persistent Fedora guest. Includes helper scripts and
+  the [kernel configuration and 14-patch bundle](k3-com260-fedora-howto/files/kernel/README.md).
 - [Tools](tools/README.md): currently a Bianbu factory-flashing script using
   stock `fastboot`, with usage, recovery instructions, and recorded results.
 - [Flashing development context](tools/k3-flash-bianbu-HANDOFF.md): protocol
   findings, design decisions, and ideas for further work.
+
+The Fedora guide is retained as the bring-up record. Its directory in this
+repository is `k3-com260-fedora-howto/`; after setting `WORK` in its workstation
+setup, use this path instead of the guide's `docs/k3-fedora-howto` path:
+
+```sh
+export HOWTO="$WORK/k3-com260-info/k3-com260-fedora-howto"
+```
 
 A GitHub wiki is planned for longer-form board documentation and notes.
 More scripts and patches will be added as the work develops.
 
 ## Hardware and results
 
-The existing flashing work was done with a **K3-CoM260 on a Firefly carrier**.
+The flashing and Fedora bring-up work was done with a
+**K3-CoM260 on a Firefly carrier**.
 Carrier-specific wiring and procedures may not apply to other setups.
 The tool documentation distinguishes image checksums pinned in the manifest
 from actual flash and boot results.
+
+The Fedora how-to records a **September 25, 2026 bring-up snapshot** with
+Bianbu Minimal K3 v4.0.1 non-UEFI firmware. Its historical stages ran on
+hardware, but the portable bundle has not been rerun end to end; newer
+images, kernels, and toolchains are not validated substitutions.
 
 **Factory flashing erases NOR firmware and all UFS contents.** Read the
 [tool documentation](tools/README.md) before using the script.
