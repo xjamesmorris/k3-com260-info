@@ -53,3 +53,23 @@ Give the human author the changed paths, a reviewable diff, the checks
 actually performed, and any unresolved questions or untested behavior.
 Never invent observations, test results, citations, or human endorsements.
 Leave publication to the human author as required by the LLM policy.
+
+## Fedora developer wiki
+
+Canonical public pages live in `wiki/`. Read the
+[wiki maintenance contract](tools/wiki/README.md) before editing them.
+The historical `k3-com260-fedora-howto/` is protected; its wiki reference is
+generated, not a second hand-maintained installation recipe.
+
+Document only the Linux-workstation procedures actually performed. Keep
+bootstrap, source-built host, and persistent guest results separate. Other
+platforms, newer images and unperformed experiments may be linked as
+resources, not presented as tested walkthroughs.
+
+Validate the exact proposed snapshot before a push. Content-repository and
+wiki pushes are separate human-authorized actions; never enable the wiki,
+alter its permissions or publish as a side effect of writing documentation.
+Private source notes and session reports are not publication inputs.
+
+The `wiki-curator` and `wiki-reviewer` profiles are read-only. They propose
+and evaluate changes; they do not edit, schedule work or publish autonomously.

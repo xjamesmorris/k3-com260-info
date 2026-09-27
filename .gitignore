@@ -7,3 +7,7 @@
 *.tar.gz
 *.tgz
 *.img.gz
+# Local wiki previews, publication checkout, and pinned Python environment
+/.wiki-build/
+/.wiki-publish/
+/.wiki-venv/

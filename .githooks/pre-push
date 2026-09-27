@@ -1,0 +1,24 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+set -eu
+PATH=/usr/bin
+export PATH
+
+# Install a reviewed copy in the immutable bundle, not a hook from the pushed branch.
+case $0 in
+    */*) hook_path=$0 ;;
+    *) hook_path=./$0 ;;
+esac
+hook_dir=${hook_path%/*}
+hook_dir=$(CDPATH='' cd -- "$hook_dir" && pwd -P)
+bundle=${hook_dir%/*}
+if [ ! -f "$bundle/interpreter" ] || [ ! -f "$bundle/bundle.json" ]; then
+    printf '%s\n' 'wiki: install the reviewed hook using .wiki-venv/bin/python tools/wiki/manage.py install-hook --ref COMMIT' >&2
+    exit 1
+fi
+IFS= read -r interpreter < "$bundle/interpreter"
+if [ ! -x "$interpreter" ]; then
+    printf '%s\n' 'wiki: pinned interpreter missing; restore the documented hash-locked .wiki-venv (push blocked)' >&2
+    exit 1
+fi
+exec "$interpreter" -I -B "$bundle/tools/wiki/manage.py" hook --bundle "$bundle" "$@"

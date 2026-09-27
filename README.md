@@ -26,8 +26,11 @@ setup, use this path instead of the guide's `docs/k3-fedora-howto` path:
 export HOWTO="$WORK/k3-com260-info/k3-com260-fedora-howto"
 ```
 
-A GitHub wiki is planned for longer-form board documentation and notes.
-More scripts and patches will be added as the work develops.
+The [Fedora developer wiki source](wiki/Home.md) organizes the recorded
+Linux/NVMe route, maintenance, diagnostics, and upstream development guidance.
+Its [maintenance tools](tools/wiki/README.md) validate a separate GitHub Wiki
+publication; editing or pushing this repository does not publish the wiki.
+More board notes, scripts, and patches will be added as the work develops.
 
 ## External Resources
 

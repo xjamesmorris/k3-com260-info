@@ -36,6 +36,16 @@ version and distinguish observed results, vendor guidance, and untested ideas.
 Public instructions must not depend on unpublished notes or files elsewhere
 on the maintainer's machine.
 
+# Fedora developer wiki
+
+`wiki/` is the canonical public wiki source; `tools/wiki/README.md` documents
+its manifest, generated historical recipe, validation and publication
+workflow. Preserve `k3-com260-fedora-howto/` unchanged. The GitHub Wiki is a
+separate checked projection, not an independently edited source of truth.
+Run the local validation gate before the relevant content or wiki push, and
+require explicit human publication approval. Neither a source commit nor a
+successful check authorizes a wiki push or new hardware result.
+
 # Existing flashing tool architecture
 
 `tools/k3-flash-bianbu.sh` is a standalone Bash factory-flashing tool, tested

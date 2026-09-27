@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "repository": "https://github.com/xjamesmorris/k3-com260-info.git",
+  "source_branch": "refs/heads/main",
+  "wiki_repository": "https://github.com/xjamesmorris/k3-com260-info.wiki.git",
+  "wiki_url": "https://github.com/xjamesmorris/k3-com260-info/wiki",
+  "baseline_commit": "57400da095e944c75e63154b1c187e18a3ac3359",
+  "protected": {
+    "path": "k3-com260-fedora-howto",
+    "tree": "db99cfb1555592c097e4c283b488149067ebea7b"
+  },
+  "pages": [
+    {"source": "wiki/Home.md", "target": "Home.md", "title": "Start here", "section": "Start", "kind": "landing"},
+    {"source": "wiki/Hardware-and-Setup.md", "target": "Hardware-and-Setup.md", "title": "Hardware and setup", "section": "Start", "kind": "procedure"},
+    {"source": "wiki/Console-and-Recovery.md", "target": "Console-and-Recovery.md", "title": "Console and recovery", "section": "Start", "kind": "procedure"},
+    {"source": "wiki/Install-Fedora.md", "target": "Install-Fedora.md", "title": "Install Fedora", "section": "Start", "kind": "procedure"},
+    {"source": "wiki/Maintain-and-Update.md", "target": "Maintain-and-Update.md", "title": "Maintain and update", "section": "Operate", "kind": "procedure"},
+    {"source": "wiki/Diagnostics-and-Known-Limits.md", "target": "Diagnostics-and-Known-Limits.md", "title": "Diagnostics and known limits", "section": "Operate", "kind": "procedure"},
+    {"source": "wiki/Kernel-and-Device-Tree-Development.md", "target": "Kernel-and-Device-Tree-Development.md", "title": "Kernel and device-tree development", "section": "Develop", "kind": "procedure"},
+    {"source": "wiki/KVM-and-QEMU.md", "target": "KVM-and-QEMU.md", "title": "KVM and QEMU", "section": "Develop", "kind": "procedure"},
+    {"source": "wiki/AI-and-Toolchains.md", "target": "AI-and-Toolchains.md", "title": "AI and toolchains", "section": "Develop", "kind": "reference"},
+    {"source": "wiki/Contributing-Upstream.md", "target": "Contributing-Upstream.md", "title": "Contributing upstream", "section": "Develop", "kind": "reference"},
+    {"source": "wiki/Ecosystem-and-Resources.md", "target": "Ecosystem-and-Resources.md", "title": "Ecosystem and resources", "section": "Resources", "kind": "resources"},
+    {"source": "wiki/Status-and-Sources.md", "target": "Status-and-Sources.md", "title": "Status and sources", "section": "Resources", "kind": "reference"}
+  ],
+  "recipe": {
+    "source": "k3-com260-fedora-howto/README.md",
+    "blob": "de8a7c54d1b46a69e259e470cfead00b724197bc",
+    "sha256": "d50d5b3f0b8098a79505ea3ca4b0db38aafa53c62bf08496ef3aa425cee69f35",
+    "target": "Fedora-Recipe.md",
+    "title": "Recorded Fedora recipe",
+    "section": "Start",
+    "links": [
+      {
+        "old": "files/kernel/README.md",
+        "new": "https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/README.md",
+        "count": 1
+      },
+      {
+        "old": "https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/README.md",
+        "new": "https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/tools/README.md",
+        "count": 1
+      }
+    ],
+    "checkout": {
+      "old": "export HOWTO=\"$WORK/k3-com260-info/docs/k3-fedora-howto\"",
+      "new": "export HOWTO=\"$WORK/k3-com260-info/k3-com260-fedora-howto\"",
+      "count": 1
+    },
+    "navigation": {
+      "installation": "https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora",
+      "recovery": "https://github.com/xjamesmorris/k3-com260-info/wiki/Console-and-Recovery#factory-recovery-only-when-needed",
+      "home": "https://github.com/xjamesmorris/k3-com260-info/wiki/Home"
+    }
+  },
+  "critical_artifacts": [
+    {
+      "id": "omni-bootstrap",
+      "url": "https://dl.fedoraproject.org/pub/alt/risc-v/release/44/Server/riscv64/images/Fedora-Server-Host-Omni-44-20260731.0.riscv64.raw.xz",
+      "sha256": "bcbf6fcadc506b4b09ea46c88bf461ce3fb31bd54f125da3604969c3c06d0923",
+      "checksum_url": "https://dl.fedoraproject.org/pub/alt/risc-v/release/44/Server/riscv64/images/Fedora-Server-Host-Omni-44-20260731.0.riscv64.raw.xz.sha256",
+      "source": {
+        "path": "k3-com260-fedora-howto/README.md",
+        "blob": "de8a7c54d1b46a69e259e470cfead00b724197bc"
+      }
+    },
+    {
+      "id": "fedora-guest",
+      "url": "https://dl.fedoraproject.org/pub/alt/risc-v/release/44/Cloud/riscv64/images/Fedora-Cloud-Base-Generic-44-20260604.0.riscv64.qcow2",
+      "sha256": "06852158be651467e3a696ce37cbade2dddb067d425689f4b5d6433b9589c27a",
+      "checksum_url": "https://dl.fedoraproject.org/pub/alt/risc-v/release/44/Cloud/riscv64/images/Fedora-Cloud-Base-Generic-44-20260604.0.riscv64.qcow2.sha256",
+      "source": {
+        "path": "k3-com260-fedora-howto/scripts/prepare-riscv-fedora-guest.sh",
+        "blob": "412f9036aced7348dc70a4e86727f7d8a57cfe83"
+      }
+    }
+  ],
+  "bootstrap_home": "# K3-CoM260 Fedora wiki\n\nThe curated developer wiki is being prepared. Start with the [repository README](https://github.com/xjamesmorris/k3-com260-info/blob/main/README.md#documentation-and-tools) for the recorded Fedora and KVM guide and its checkout-path correction.\n",
+  "validation_exceptions": []
+}
