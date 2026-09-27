@@ -60,6 +60,11 @@ Corrections, patches, and additional hardware results are welcome. Include
 the module, carrier, relevant firmware or OS versions, and what you tried.
 For patches, identify the target project and revision.
 
+Agent-assisted contributions must follow the [agent guidance](AGENTS.md) and
+[LLM policy](LLM-POLICY.md), which adopts the Linux kernel's requirements.
+An LLM is a tool: the human contributor remains the author responsible for
+reviewing, understanding, and publishing the assisted material.
+
 ## License
 
 GPL-2.0-only. See [LICENSE](LICENSE).

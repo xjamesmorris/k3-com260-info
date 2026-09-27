@@ -1,3 +1,9 @@
+# Agent-assisted contribution policy
+
+Read [AGENTS.md](../AGENTS.md) and the [LLM policy](../LLM-POLICY.md) before
+working on contributions. They provide the tool-independent requirements for
+human authorship, review, attribution, sign-off, and publication.
+
 # Repository purpose
 
 This repository is a lightweight public collection of what the maintainer
