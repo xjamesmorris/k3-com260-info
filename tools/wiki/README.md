@@ -94,8 +94,8 @@ mock HTTPS/DNS, and local bare Git remotes; they never contact or push GitHub.
    with only part of the validator or content.
 3. Install the immutable hook from that reviewed commit, then obtain separate
    approval and push that exact canonical source commit.
-4. Enable Wikis, restrict editing to collaborators, and create the exact
-   bootstrap Home page with one browser save only.
+4. For first publication, verify collaborator-only editing and the existing
+   exact root Home bootstrap; never web-edit it again.
 5. Prepare from the public source commit, review the receipt/report/tree, then
    obtain separate approval for the exact receipt and publish it.
 6. Let the publisher complete its mandatory remote read-back, then inspect the
@@ -155,7 +155,7 @@ There are no copied binary assets in this version.
 | `kind` | `landing`, `procedure`, `reference`, or `resources`. Only the last can receive resource-link availability exceptions. |
 | `recipe` | The single protected input, its Git blob/SHA256, destination, title/group, enumerated link transforms, checkout-line transform, and exact generated navigation to installation, maintained recovery, and Home. |
 | `critical_artifacts` | Exactly the `omni-bootstrap` and `fedora-guest` records: `id`, `url`, `sha256`, `checksum_url`, and `source` with exact protected `path`/`blob`. Both images and sidecars are mandatory publication checks. |
-| `bootstrap_home` | Exact UTF-8 initial Home bytes, including the final newline, approved for one-time adoption. |
+| `bootstrap_home` | Exact reviewed UTF-8 initial Home bytes: nonempty, LF-terminated, without CR/NUL, and under 4 KiB; approved for one-time adoption. |
 | `validation_exceptions` | Exact source-bound review allowances described below; empty by default. |
 
 The output is precisely the authored targets, `Fedora-Recipe.md`,
@@ -519,30 +519,24 @@ Do not run that push merely because validation passed. The human must approve
 that exact canonical commit for `main`; the later wiki receipt approval is a
 different decision.
 
-Wiki enablement and first-page creation are separate human actions:
+Wiki enablement and first-page creation were separate human actions. The
+one-time browser bootstrap was completed on September 27, 2026. The advertised
+wiki tip is root commit `58ad759c03d924a051a26b6150af7d278119f026`;
+it contains only regular `Home.md`, with precisely these bytes and a final
+newline:
 
-```sh
-/usr/bin/gh repo edit xjamesmorris/k3-com260-info --enable-wiki
-/usr/bin/gh browse --repo xjamesmorris/k3-com260-info --wiki
+```text
+Welcome to the k3-com260-info wiki!
 ```
 
-In the repository UI, open **Settings -> General -> Features -> Wikis** and
-check **Restrict editing to collaborators only**. Then create **one initial
-Home page in the browser**, with precisely these bytes and a final newline:
-
-```markdown
-# K3-CoM260 Fedora wiki
-
-The curated developer wiki is being prepared. Start with the [repository README](https://github.com/xjamesmorris/k3-com260-info/blob/main/README.md#documentation-and-tools) for the recorded Fedora and KVM guide and its checkout-path correction.
-```
-
-Click the browser's save/create action **exactly once**. Never make a second
-browser save, even to adjust whitespace or restore the same visible text: it
-creates a child commit, so the advertised tip is no longer the required root
-commit and `--adopt-bootstrap` refuses it. Do not add a sidebar or other page.
-Review the initial Home commit/blob; the initial commit must be a root commit.
-If the bytes differ or a second save occurred, do not edit again and do not
-force-push. Go directly to the
+The manifest binds those public bytes for one-time adoption. In the repository
+UI, confirm **Settings -> General -> Features -> Wikis -> Restrict editing to
+collaborators only** remains checked. Never make another browser save, even to
+adjust whitespace or replace the default text: it creates a child commit, so
+the advertised tip is no longer the required root commit and
+`--adopt-bootstrap` refuses it. Do not add a sidebar or other page. If the
+remote bytes, tree, or ancestry differ, do not edit again and do not force-push.
+Go directly to the
 [reviewed bootstrap recovery procedure](#recovery-and-useful-failures).
 The tool discovers the wiki's default branch through an isolated
 `/usr/bin/git ls-remote --symref`;

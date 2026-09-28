@@ -75,6 +75,6 @@
       }
     }
   ],
-  "bootstrap_home": "# K3-CoM260 Fedora wiki\n\nThe curated developer wiki is being prepared. Start with the [repository README](https://github.com/xjamesmorris/k3-com260-info/blob/main/README.md#documentation-and-tools) for the recorded Fedora and KVM guide and its checkout-path correction.\n",
+  "bootstrap_home": "Welcome to the k3-com260-info wiki!\n",
   "validation_exceptions": []
 }

@@ -173,6 +173,15 @@ class ReferenceTests(unittest.TestCase):
         with self.assertRaises(c.Invalid):
             c.load_json(b'{"schema":1,"schema":2}', "fixture")
 
+    def test_bootstrap_home_requires_small_lf_terminated_utf8_text(self):
+        invalid = ("", "Missing final newline", "CRLF\r\n", "NUL\0\n",
+                   "\ud800\n", "x" * 4095 + "\n")
+        for value in invalid:
+            manifest = copy.deepcopy(self.manifest)
+            manifest["bootstrap_home"] = value
+            with self.subTest(value=repr(value)), self.assertRaises(c.Invalid):
+                c.manifest(MemorySnapshot(manifest, self.data))
+
     def test_complete_deterministic_projection(self):
         fixture = MemorySnapshot(self.manifest, self.data)
         m, first = c.render(fixture)
@@ -1460,7 +1469,7 @@ class BundleFixtures(GitFixture):
                 self.assertTrue(Path(kwargs["env"]["WIKI_TEST_OUTPUT"]).is_relative_to(self.root / s.BUILD / "tests"))
                 command = [*command, "-k", "ReferenceTests"]
                 result = run_process(command, **kwargs)
-                self.assertIn(b"Ran 17 tests", result.stderr)
+                self.assertIn(b"Ran 18 tests", result.stderr)
                 return result
             return run_process(command, **kwargs)
 

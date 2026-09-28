@@ -560,8 +560,15 @@ def manifest(snapshot: Snapshot) -> dict[str, Any]:
         "recovery": WIKI_URL + "/Console-and-Recovery#factory-recovery-only-when-needed",
         "home": WIKI_URL + "/Home",
     }, "generated recipe navigation must use the maintained wiki authorities")
-    require(isinstance(value["bootstrap_home"], str) and value["bootstrap_home"].startswith("# ")
-            and len(value["bootstrap_home"]) < 4096, "invalid bootstrap Home bytes")
+    bootstrap = value["bootstrap_home"]
+    try:
+        bootstrap_bytes = bootstrap.encode("utf-8") if isinstance(bootstrap, str) else None
+    except UnicodeError:
+        bootstrap_bytes = None
+    require(isinstance(bootstrap, str) and bool(bootstrap.strip()) and bootstrap.endswith("\n")
+            and "\r" not in bootstrap and "\0" not in bootstrap
+            and bootstrap_bytes is not None and len(bootstrap_bytes) < 4096,
+            "invalid bootstrap Home bytes")
     require(isinstance(value["validation_exceptions"], list), "invalid validation exceptions")
     critical_artifacts(snapshot, value["critical_artifacts"])
     return value
