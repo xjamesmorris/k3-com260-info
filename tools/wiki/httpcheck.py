@@ -49,7 +49,7 @@ def public_addresses(host: str, resolver) -> list[str]:
     except (OSError, subprocess.TimeoutExpired):
         raise Unavailable("DNS resolution unavailable or timed out") from None
     c.require(addresses and len(addresses) <= 32, "empty or oversized DNS answer")
-    result = []
+    families = {4: set(), 6: set()}
     for address in addresses:
         try:
             ip = ipaddress.ip_address(address)
@@ -60,8 +60,16 @@ def public_addresses(host: str, resolver) -> list[str]:
                   and not (isinstance(ip, ipaddress.IPv6Address) and
                            (ip.ipv4_mapped or ip.sixtofour or ip.teredo)),
                   "DNS resolved to a non-public or transition address; request refused")
-        result.append(str(ip))
-    return sorted(set(result))
+        families[ip.version].add(ip)
+    ordered = []
+    ipv4 = sorted(families[4], key=int)
+    ipv6 = sorted(families[6], key=int)
+    for index in range(max(len(ipv4), len(ipv6))):
+        if index < len(ipv4):
+            ordered.append(str(ipv4[index]))
+        if index < len(ipv6):
+            ordered.append(str(ipv6[index]))
+    return ordered
 
 
 def resolve(host: str) -> list[str]:
