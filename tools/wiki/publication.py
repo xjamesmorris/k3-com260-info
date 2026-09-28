@@ -49,6 +49,19 @@ def utc_day():
     return datetime.now(timezone.utc).date()
 
 
+def interpreter_path() -> str:
+    executable = Path(sys.executable)
+    launcher = Path(sys.prefix) / "bin/python"
+    try:
+        selected = launcher if launcher.is_file() and launcher.samefile(executable) else executable
+    except OSError:
+        selected = executable
+    c.require(selected.is_absolute() and "\n" not in str(selected)
+              and selected.is_file() and os.access(selected, os.X_OK),
+              "invalid pinned interpreter")
+    return str(selected)
+
+
 def tool_identity(snapshot: c.Snapshot) -> dict:
     expected = {p for p in TOOL_PATHS if p.startswith("tools/wiki/")} | {c.MANIFEST, c.EXCEPTIONS}
     c.require(snapshot.inventory("tools/wiki") == expected, "tool inventory differs from the supported, reviewed tool set")
@@ -963,8 +976,7 @@ def install_hook(root: Path, ref: str) -> Path:
     c.require(not source.worktree, "hook installation requires committed trusted tooling")
     identity = bind_running_tool(source)
     gitdir = Path(source.git.run("rev-parse", "--absolute-git-dir").decode().strip())
-    interpreter = sys.executable
-    c.require(Path(interpreter).is_absolute() and "\n" not in interpreter, "invalid pinned interpreter")
+    interpreter = interpreter_path()
     metadata = {"schema": 1, "source": source.commit, "identities": identity,
                 "runtime": runtime_identity(), "interpreter": interpreter}
     digest = c.sha256(c.canonical(metadata))

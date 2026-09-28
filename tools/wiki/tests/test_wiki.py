@@ -728,6 +728,17 @@ class LocalRemotes(p.PublicRemotes):
 
 
 class SystemExecutableTests(unittest.TestCase):
+    def test_interpreter_path_prefers_active_prefix_launcher(self):
+        with tempfile.TemporaryDirectory(prefix="wiki-python-", dir=fixture_output()) as temporary:
+            prefix = Path(temporary)
+            (prefix / "bin").mkdir()
+            launcher = prefix / "bin/python"
+            executable = Path(sys.executable).resolve()
+            launcher.symlink_to(executable)
+            with mock.patch.object(p.sys, "prefix", str(prefix)), \
+                    mock.patch.object(p.sys, "executable", str(executable)):
+                self.assertEqual(p.interpreter_path(), str(launcher))
+
     def test_system_tool_identities_are_root_owned_absolute_and_hashed(self):
         identities = c.system_executable_identities()
         self.assertEqual(set(identities), {"git", "gh"})
@@ -1497,7 +1508,9 @@ class BundleFixtures(GitFixture):
             installed = p.install_hook(self.root, source)
         self.assertEqual(len(calls), 1)
         self.assertFalse(calls[0].exists())
-        self.assertEqual(p.read_bundle(installed)["source"], source)
+        metadata = p.read_bundle(installed)
+        self.assertEqual(metadata["source"], source)
+        self.assertEqual(metadata["interpreter"], p.interpreter_path())
         self.assertEqual(installed.name, c.sha256(c.regular_read(installed, "bundle.json")))
 
     def test_install_interruption_never_creates_incomplete_final_bundle(self):
