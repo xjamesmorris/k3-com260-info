@@ -26,7 +26,7 @@ MAX_BODY = 128 * 1024
 MAX_CHECKSUM = 4 * 1024
 MAX_HEADERS = 32 * 1024
 MAX_REDIRECTS = 3
-RETRIES = 1
+RETRIES = 3
 RESERVED = ("example.com", "example.org", "example.net")
 
 

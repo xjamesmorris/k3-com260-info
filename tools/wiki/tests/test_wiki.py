@@ -494,10 +494,14 @@ class NetworkChecks(unittest.TestCase):
             "2001:4860:4860::8888", "93.184.216.35",
             "2001:4860:4860::8844", "93.184.216.34",
         ]
-        self.responses = [h.Unavailable("fixture IPv4 unavailable"), h.Response(200, {})]
+        self.responses = [
+            h.Unavailable("fixture first IPv4 unavailable"),
+            h.Unavailable("fixture IPv6 unavailable"),
+            h.Response(200, {}),
+        ]
         self.assertEqual(self.checker.one(self.url, "source"), "available-head")
         self.assertEqual([item[2] for item in self.requests],
-                         ["93.184.216.34", "2001:4860:4860::8844"])
+                         ["93.184.216.34", "2001:4860:4860::8844", "93.184.216.35"])
 
     def test_rebinding_cannot_change_socket_target(self):
         connection = h.PinnedHTTPS("public.fixture.test", "93.184.216.34", 1000)
@@ -522,12 +526,14 @@ class NetworkChecks(unittest.TestCase):
         self.assertFalse(self.resolutions)
 
     def test_bounded_timeout_and_rate_limit_retry(self):
-        for responses in ([h.Unavailable("fixture timeout")] * 2, [h.Response(429, {})] * 2):
+        attempts = h.RETRIES + 1
+        for responses in ([h.Unavailable("fixture timeout")] * attempts,
+                          [h.Response(429, {})] * attempts):
             self.responses = list(responses)
             self.requests.clear()
             with self.assertRaises(h.Unavailable):
                 self.checker.one(self.url, "source")
-            self.assertEqual(len(self.requests), 2)
+            self.assertEqual(len(self.requests), attempts)
 
     def test_text_only_get_fallback(self):
         self.responses = [h.Response(405, {}), h.Response(200, {"content-type": "text/html"}, b"ok")]

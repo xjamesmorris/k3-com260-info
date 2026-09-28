@@ -356,11 +356,11 @@ DNS runs in a bounded subprocess (5 seconds). A socket connects to the
 already validated public numeric IP, while TLS certificate verification and
 SNI use the original hostname; a second name lookup cannot rebind the
 connection. Validated dual-stack answers are deduplicated and deterministically
-interleaved, so the initial request and one retry cover IPv4 and IPv6 instead
-of exhausting both attempts on one unrouted family. Requests ignore proxy
+interleaved, so a bounded sequence can cover IPv4 and IPv6 instead of
+exhausting its attempts on one unrouted family. Requests ignore proxy
 environment variables. Each request has an 8-second total socket deadline,
-at most one retry, three redirects, and 32 KiB accepted headers. There is no
-unbounded resolver thread.
+at most three retries across the validated address sequence, three redirects,
+and 32 KiB accepted headers. There is no unbounded resolver thread.
 
 Ordinary link-availability checks use HEAD. Only a 405/501 on a plausible
 text-page path can trigger their GET fallback; its response must be HTML/plain text. Archive, image, disk, repository,
