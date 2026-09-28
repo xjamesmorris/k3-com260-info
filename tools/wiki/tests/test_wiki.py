@@ -728,16 +728,30 @@ class LocalRemotes(p.PublicRemotes):
 
 
 class SystemExecutableTests(unittest.TestCase):
-    def test_interpreter_path_prefers_active_prefix_launcher(self):
+    def test_interpreter_path_prefers_repository_venv_launcher(self):
         with tempfile.TemporaryDirectory(prefix="wiki-python-", dir=fixture_output()) as temporary:
-            prefix = Path(temporary)
-            (prefix / "bin").mkdir()
-            launcher = prefix / "bin/python"
+            root = Path(temporary)
+            (root / ".wiki-venv/bin").mkdir(parents=True)
+            launcher = root / ".wiki-venv/bin/python"
             executable = Path(sys.executable).resolve()
             launcher.symlink_to(executable)
-            with mock.patch.object(p.sys, "prefix", str(prefix)), \
-                    mock.patch.object(p.sys, "executable", str(executable)):
-                self.assertEqual(p.interpreter_path(), str(launcher))
+            with mock.patch.object(p.sys, "executable", str(executable)):
+                self.assertEqual(p.interpreter_path(root), str(launcher))
+
+    def test_interpreter_path_rejects_unrelated_or_symlinked_repository_venv(self):
+        with tempfile.TemporaryDirectory(prefix="wiki-python-", dir=fixture_output()) as temporary:
+            root = Path(temporary)
+            (root / ".wiki-venv/bin").mkdir(parents=True)
+            launcher = root / ".wiki-venv/bin/python"
+            launcher.write_text("#!/bin/sh\nexit 0\n")
+            launcher.chmod(0o755)
+            with self.assertRaisesRegex(c.Invalid, "run the wiki tool"):
+                p.interpreter_path(root)
+            moved = root / "moved-venv"
+            (root / ".wiki-venv").rename(moved)
+            (root / ".wiki-venv").symlink_to(moved, target_is_directory=True)
+            with self.assertRaisesRegex(c.Invalid, "missing or symlinked"):
+                p.interpreter_path(root)
 
     def test_system_tool_identities_are_root_owned_absolute_and_hashed(self):
         identities = c.system_executable_identities()
@@ -1481,6 +1495,7 @@ class BundleFixtures(GitFixture):
         def reference_tests_only(command, **kwargs):
             if "-m" in command and "unittest" in command:
                 self.assertTrue(Path(kwargs["env"]["WIKI_TEST_OUTPUT"]).is_relative_to(self.root / s.BUILD / "tests"))
+                self.assertEqual(command[0], p.interpreter_path(self.root))
                 self.assertEqual(kwargs["timeout"], p.TRUSTED_SUITE_TIMEOUT)
                 command = [*command, "-k", "ReferenceTests"]
                 result = run_process(command, **kwargs)
@@ -1510,7 +1525,7 @@ class BundleFixtures(GitFixture):
         self.assertFalse(calls[0].exists())
         metadata = p.read_bundle(installed)
         self.assertEqual(metadata["source"], source)
-        self.assertEqual(metadata["interpreter"], p.interpreter_path())
+        self.assertEqual(metadata["interpreter"], p.interpreter_path(self.root))
         self.assertEqual(installed.name, c.sha256(c.regular_read(installed, "bundle.json")))
 
     def test_install_interruption_never_creates_incomplete_final_bundle(self):

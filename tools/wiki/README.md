@@ -54,12 +54,13 @@ and `/usr/bin/gh` by absolute path, streamed SHA256, size, ownership, mode,
 and root-owned non-writable ancestor identity. The tools never select either
 executable from ambient `PATH`; a package, path, owner, mode, or ancestor
 change requires a fresh validation, hook installation, and preparation. Hook
-installation records the active Python prefix's `bin/python` launcher when it
-resolves to the running interpreter, preserving the hash-locked virtual
-environment path even if Python reports its base executable. The local
-interpreter/environment remains part of the human's trust boundary, not a
-remotely attested runtime. Use `-B` to avoid untracked `__pycache__` files in
-the tool inventory.
+installation and its isolated suite select the repository's nonsymlinked
+`.wiki-venv/bin/python` launcher when `.wiki-venv/` exists, and require it to
+resolve to the running interpreter. This preserves the hash-locked
+virtual-environment path even when the base and venv launchers share the same
+binary inode. The local interpreter/environment remains part of the human's
+trust boundary, not a remotely attested runtime. Use `-B` to avoid untracked
+`__pycache__` files in the tool inventory.
 
 `gh auth status` checks the GitHub CLI's stored login; it does not verify the
 credential mechanism that the human will use for the separate canonical

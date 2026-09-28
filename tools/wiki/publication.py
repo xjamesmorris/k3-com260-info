@@ -49,13 +49,23 @@ def utc_day():
     return datetime.now(timezone.utc).date()
 
 
-def interpreter_path() -> str:
+def interpreter_path(root: Path) -> str:
     executable = Path(sys.executable)
-    launcher = Path(sys.prefix) / "bin/python"
-    try:
-        selected = launcher if launcher.is_file() and launcher.samefile(executable) else executable
-    except OSError:
-        selected = executable
+    environment = root / ".wiki-venv"
+    selected = executable
+    if environment.exists() or environment.is_symlink():
+        c.require(environment.is_dir() and not environment.is_symlink(),
+                  "repository virtual environment is missing or symlinked")
+        binaries = environment / "bin"
+        c.require(binaries.is_dir() and not binaries.is_symlink(),
+                  "repository virtual environment bin directory is missing or symlinked")
+        launcher = binaries / "python"
+        try:
+            c.require(launcher.is_file() and launcher.samefile(executable),
+                      "run the wiki tool with the repository .wiki-venv/bin/python")
+        except OSError:
+            raise c.Invalid("repository virtual environment launcher is unavailable") from None
+        selected = launcher
     c.require(selected.is_absolute() and "\n" not in str(selected)
               and selected.is_file() and os.access(selected, os.X_OK),
               "invalid pinned interpreter")
@@ -961,7 +971,8 @@ def run_tests(tool_root: Path, repository: Path, trusted_ref: str) -> None:
         env["WIKI_TEST_OUTPUT"] = str(output / "fixtures")
         env.update(TMPDIR=temporary, TMP=temporary, TEMP=temporary)
         try:
-            result = subprocess.run([sys.executable, "-I", "-B", "-X", "pycache_prefix=" + str(output / "bytecode"),
+            result = subprocess.run([interpreter_path(repository), "-I", "-B",
+                                     "-X", "pycache_prefix=" + str(output / "bytecode"),
                                      "-m", "unittest", "discover",
                                      "-s", str(tool_root / "tools/wiki/tests"), "-p", "test_wiki.py"],
                                     cwd=output, env=env, capture_output=True,
@@ -976,7 +987,7 @@ def install_hook(root: Path, ref: str) -> Path:
     c.require(not source.worktree, "hook installation requires committed trusted tooling")
     identity = bind_running_tool(source)
     gitdir = Path(source.git.run("rev-parse", "--absolute-git-dir").decode().strip())
-    interpreter = interpreter_path()
+    interpreter = interpreter_path(root)
     metadata = {"schema": 1, "source": source.commit, "identities": identity,
                 "runtime": runtime_identity(), "interpreter": interpreter}
     digest = c.sha256(c.canonical(metadata))
