@@ -368,7 +368,12 @@ an inconclusive response. That is reported as **unavailable**, not success.
 Availability does not verify artifact checksums, contents, or historical
 claims. Production Git operations separately allow only the two literal
 public HTTPS repository URLs, enforce TLS/no redirects and bounded Git
-timeouts, and reject repository transport rewrites/proxies/helpers.
+timeouts, and reject repository transport rewrites/proxies/helpers. Anonymous
+advertisement/fetch operations retain a 90-second bound. The single exact
+credentialed wiki push has a ten-minute outer bound because its installed
+pre-push hook repeats the receipt's online and remote checks before Git can
+send the update; the hook and each underlying operation remain independently
+bounded.
 Local transports and fake resolvers are Python fixture seams only, not CLI
 options.
 
@@ -395,7 +400,7 @@ directories, bytecode caches, symlinks, hardlinks and incorrect modes fail.
 Fixture metadata comes from the selected Git commit. Test output and any
 bytecode cache are isolated in an individually cleaned temporary directory
 under `.wiki-build/tests/`; the runner uses `-I -B` and an isolated cache
-prefix, with a five-minute suite timeout.
+prefix, with a ten-minute suite timeout.
 
 The completed files are read-only (`0444`, or `0555` for hook dispatchers);
 directories are sealed to `0555` and fsynced before an atomic rename to

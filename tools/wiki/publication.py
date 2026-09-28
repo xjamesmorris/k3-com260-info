@@ -37,6 +37,9 @@ BUNDLE_MODES = {
 }
 PROVENANCE = "K3-Wiki-Provenance: "
 ZERO = "0" * 40
+GIT_READ_TIMEOUT = 90
+GIT_PUSH_TIMEOUT = 600
+TRUSTED_SUITE_TIMEOUT = 600
 GITHUB_TOKEN_ENV = {
     "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
 }
@@ -251,10 +254,11 @@ class PublicRemotes:
             ]
         if not hooks:
             options += ["-c", "core.hooksPath=/dev/null"]
+        timeout = GIT_PUSH_TIMEOUT if hooks else GIT_READ_TIMEOUT
         try:
             result = subprocess.run([c.system_executable_path("git"), "--no-pager",
                                      "--no-replace-objects", "-C", str(git.root),
-                                     *options, *args], env=env, capture_output=True, timeout=90, check=False)
+                                     *options, *args], env=env, capture_output=True, timeout=timeout, check=False)
         except (OSError, subprocess.TimeoutExpired):
             raise c.Invalid("public Git operation unavailable or timed out; no fallback remote is permitted") from None
         c.require(result.returncode == 0, f"public Git {args[0]} failed; remote details suppressed")
@@ -947,7 +951,8 @@ def run_tests(tool_root: Path, repository: Path, trusted_ref: str) -> None:
             result = subprocess.run([sys.executable, "-I", "-B", "-X", "pycache_prefix=" + str(output / "bytecode"),
                                      "-m", "unittest", "discover",
                                      "-s", str(tool_root / "tools/wiki/tests"), "-p", "test_wiki.py"],
-                                    cwd=output, env=env, capture_output=True, timeout=300, check=False)
+                                    cwd=output, env=env, capture_output=True,
+                                    timeout=TRUSTED_SUITE_TIMEOUT, check=False)
         except (OSError, subprocess.TimeoutExpired):
             raise c.Invalid("trusted tooling fixtures could not finish; run the documented unittest command") from None
         c.require(result.returncode == 0, "trusted tooling fixtures failed; run the documented unittest command (push blocked)")

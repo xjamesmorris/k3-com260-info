@@ -860,6 +860,7 @@ class PublicRemoteCommandTests(unittest.TestCase):
             self.assertFalse(any(arg.startswith("credential.https://github.com.helper=") for arg in command))
             self.assertIn("core.hooksPath=/dev/null", command)
             self.assertNotIn(self.SECRET, "\0".join(command))
+            self.assertEqual(call.kwargs["timeout"], p.GIT_READ_TIMEOUT)
             self.assert_sanitized_environment(env)
 
     def test_push_adds_only_verified_github_helper_and_keeps_hooks(self):
@@ -891,6 +892,8 @@ class PublicRemoteCommandTests(unittest.TestCase):
         ])
         self.assertFalse(any("extraHeader" in arg or "Authorization" in arg for arg in command))
         self.assertNotIn(self.SECRET, "\0".join(command))
+        self.assertEqual(run.call_args.kwargs["timeout"], p.GIT_PUSH_TIMEOUT)
+        self.assertGreater(p.GIT_PUSH_TIMEOUT, p.GIT_READ_TIMEOUT)
         self.assert_sanitized_environment(env, credentials=True)
 
     def test_push_requires_trusted_gh_without_exposing_environment(self):
@@ -1467,6 +1470,7 @@ class BundleFixtures(GitFixture):
         def reference_tests_only(command, **kwargs):
             if "-m" in command and "unittest" in command:
                 self.assertTrue(Path(kwargs["env"]["WIKI_TEST_OUTPUT"]).is_relative_to(self.root / s.BUILD / "tests"))
+                self.assertEqual(kwargs["timeout"], p.TRUSTED_SUITE_TIMEOUT)
                 command = [*command, "-k", "ReferenceTests"]
                 result = run_process(command, **kwargs)
                 self.assertIn(b"Ran 18 tests", result.stderr)
