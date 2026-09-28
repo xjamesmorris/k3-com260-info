@@ -2,18 +2,10 @@
 
 # Kernel and device-tree development
 
-**Applies to:** The Firefly-sold 8 GiB K3-CoM260 kit and the pinned `7.3.0-rc4-k3-kvm-host-a1` Fedora/NVMe host, built on a Linux workstation and temporarily booted by Bianbu v4.0.1 non-UEFI U-Boot. `k3-com260-ifx` does not establish the carrier PCB revision.
-
-**Evidence:** Public source/patch/configuration pins, exported builder and recipe, and the separate public dldo4 RFC; upstream documentation is reference context.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 recorded host setup; the dldo4 RFC's individual test date is not specified. No new build/boot result or portable-bundle end-to-end rerun is claimed.
-
-**Destructive operations:** The linked builder writes a fresh workstation worktree/build/stage; the separate installer writes `/boot` and `/lib/modules`, and boot testing resets the board. This page supplies no flashing, disk-writing, or saved-environment procedure.
-
-The useful development unit is **a source tree, patch sequence, final config,
-toolchain, and matched boot set**, not just a kernel version string. Follow
+This page is for kernel and device-tree developers working from the pinned
+patched Fedora/NVMe host rather than the Omni bootstrap. The useful
+development unit is **a source tree, patch sequence, final config, toolchain,
+and matched boot set**, not just a kernel version string. Follow
 [Fedora-Recipe: build and install the KVM host](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#build-and-install-the-kvm-host)
 for the exercised commands. The explanations below do not introduce another
 build or installation recipe.
@@ -167,5 +159,17 @@ appropriate hardware evidence, not just a new version label.
 - [Public dldo4 RFC](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/dldo4/0001-riscv-dts-spacemit-k3-com260-keep-dldo4-enabled.patch): patch metadata and the limited matched hardware observation.
 - [Fedora Omni description](https://fedoraproject.org/wiki/Architectures/RISC-V/OmniKernel): downstream lineage, not a new CoM260 test.
 - [LLVM build guidance](https://docs.kernel.org/kbuild/llvm.html) and [DT schema guidance](https://docs.kernel.org/devicetree/bindings/writing-schema.html): upstream mechanisms and validation scope, not new local results.
+
+## Technical notes
+
+**Applies to:** The Firefly-sold 8 GiB K3-CoM260 kit and the pinned `7.3.0-rc4-k3-kvm-host-a1` Fedora/NVMe host, built on a Linux workstation and temporarily booted by Bianbu v4.0.1 non-UEFI U-Boot. `k3-com260-ifx` does not establish the carrier PCB revision.
+
+**Evidence:** Public source/patch/configuration pins, exported builder and recipe, and the separate public dldo4 RFC; upstream documentation is reference context.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 recorded host setup; the dldo4 RFC's individual test date is not specified. No new build/boot result or portable-bundle end-to-end rerun is claimed.
+
+**Destructive operations:** The linked builder writes a fresh workstation worktree/build/stage; the separate installer writes `/boot` and `/lib/modules`, and boot testing resets the board. This page supplies no flashing, disk-writing, or saved-environment procedure.
 
 **Previous:** [Diagnostics and known limits](https://github.com/xjamesmorris/k3-com260-info/wiki/Diagnostics-and-Known-Limits) | **Next:** [KVM and QEMU](https://github.com/xjamesmorris/k3-com260-info/wiki/KVM-and-QEMU) | [Home](https://github.com/xjamesmorris/k3-com260-info/wiki/Home)

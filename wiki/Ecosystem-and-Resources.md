@@ -2,19 +2,14 @@
 
 # Ecosystem and resources
 
-**Applies to:** Reference resources for Fedora/RISC-V developers using K3-CoM260; links to other boards and distributions are not compatibility claims.
-
-**Evidence:** Official project/vendor resources and explicitly labeled public prior art.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** Not applicable; resource review only.
-
-**Destructive operations:** None on this page. Linked distribution and vendor instructions may overwrite storage or firmware; they are not validated substitutes for this wiki's route.
-
-Start with [the recorded Fedora route](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora).
-Use this directory to find the owner of a problem or understand adjacent
-work, not to assemble a new installation recipe from unrelated boards.
+This directory is for Fedora/RISC-V developers using K3-CoM260 who need
+official project and vendor resources or clearly labeled public prior
+art beyond the recorded route. Start with
+[the recorded Fedora route](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora),
+then read each table row for its purpose, language/support boundary, and check
+date. Links to other boards and distributions are not compatibility claims;
+use this directory to find the owner of a problem or understand adjacent work,
+not to assemble a new installation recipe from unrelated boards.
 The [dated status](https://github.com/xjamesmorris/k3-com260-info/wiki/Status-and-Sources)
 separates the Fedora 44 community baseline from Fedora 45 Beta.
 
@@ -64,6 +59,18 @@ Prefer original-language sources when translations disagree; identify the
 document revision and uncertainty rather than silently choosing a pinout or
 procedure. These links do not grant permission to copy whole translations,
 manual figures, or third-party logs.
+
+## Technical notes
+
+**Applies to:** Reference resources for Fedora/RISC-V developers using K3-CoM260; links to other boards and distributions are not compatibility claims.
+
+**Evidence:** Official project/vendor resources and explicitly labeled public prior art.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** Not applicable; resource review only.
+
+**Destructive operations:** None on this page. Linked distribution and vendor instructions may overwrite storage or firmware; they are not validated substitutes for this wiki's route.
 
 **Previous:** [Contributing upstream](https://github.com/xjamesmorris/k3-com260-info/wiki/Contributing-Upstream).
 **Next:** [Status and sources](https://github.com/xjamesmorris/k3-com260-info/wiki/Status-and-Sources).

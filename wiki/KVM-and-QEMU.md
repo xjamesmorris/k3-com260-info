@@ -2,18 +2,10 @@
 
 # KVM and QEMU
 
-**Applies to:** 8 GiB K3-CoM260 on the recorded Firefly carrier, Bianbu Minimal K3 v4.0.1 non-UEFI firmware, Fedora on NVMe, and the pinned Fedora guest stack below.
-
-**Evidence:** Recorded public Fedora result; upstream references explain concepts and contribution expectations, not additional board tests.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 public bring-up snapshot; no new hardware testing for this page.
-
-**Destructive operations:** None on this page. The linked installation recipe overwrites the selected NVMe disk; guest operation writes a persistent guest disk. Forced termination can lose guest writes.
-
-The useful result is a **full, persistent Fedora guest on an exact patched
-host**, not a general claim that any K3 kernel can run any RISC-V guest.
+This page is for virtualization developers and security researchers evaluating
+the recorded KVM result. That result is a **full, persistent Fedora guest on
+an exact patched host**, not a general claim that any K3 kernel can run any
+RISC-V guest.
 The [public snapshot](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md#recorded-snapshot)
 is the evidence. The generated
 [Fedora recipe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe)
@@ -138,6 +130,18 @@ hostile-guest isolation, VFIO, migration, or long-duration stability claim**.
 Stop on a failed prerequisite or a different stack and use
 [diagnostics](https://github.com/xjamesmorris/k3-com260-info/wiki/Diagnostics-and-Known-Limits),
 not an improvised launch recipe.
+
+## Technical notes
+
+**Applies to:** 8 GiB K3-CoM260 on the recorded Firefly carrier, Bianbu Minimal K3 v4.0.1 non-UEFI firmware, Fedora on NVMe, and the pinned Fedora guest stack on this page.
+
+**Evidence:** Recorded public Fedora result; upstream references explain concepts and contribution expectations, not additional board tests.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 public bring-up snapshot; no new hardware testing for this page.
+
+**Destructive operations:** None on this page. The linked installation recipe overwrites the selected NVMe disk; guest operation writes a persistent guest disk. Forced termination can lose guest writes.
 
 **Previous:** [Kernel and device-tree development](https://github.com/xjamesmorris/k3-com260-info/wiki/Kernel-and-Device-Tree-Development).
 **Next:** [AI and toolchains](https://github.com/xjamesmorris/k3-com260-info/wiki/AI-and-Toolchains).

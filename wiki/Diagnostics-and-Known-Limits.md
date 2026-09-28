@@ -2,19 +2,12 @@
 
 # Diagnostics and known limits
 
-**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot, Linux-workstation/NVMe Fedora bootstrap, and the pinned KVM host/guest stages. Carrier PCB revision is not established by `k3-com260-ifx`.
-
-**Evidence:** Public Fedora/KVM record, exported helper guards, recovery-tool results, and the public dldo4 RFC. Checkpoint failures below are not all observed defects.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 recorded Fedora/NVMe and KVM setup; the separate dldo4 RFC does not specify an independent test date. No new run; the portable bundle has not been rerun end to end.
-
-**Destructive operations:** None in the report template. Linked installation/recovery procedures can overwrite disks or NOR/UFS; a diagnostic symptom alone is not a reason to reimage or flash.
-
-Start with **the last successful checkpoint**, not a board-wide conclusion.
-A checksum pass, a compiled DTB, an early login prompt, and a persistent
-Fedora guest are different results. Keep workstation, U-Boot, K3 host, and
+Use this page when a recorded checkpoint fails or when preparing a precise
+public report from the Fedora/KVM route. Start with **the last successful
+checkpoint**, not a board-wide conclusion: a checksum pass, a compiled DTB,
+an early login prompt, and a persistent Fedora guest are different results.
+The symptom table mixes recorded failures with diagnostic checkpoints; not
+every entry is an observed defect. Keep workstation, U-Boot, K3 host, and
 guest observations separate; the commands remain in
 [Fedora-Recipe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe).
 
@@ -127,5 +120,17 @@ not an end-to-end rerun of the exported bundle.
 - [Preserved Fedora/KVM record](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md): checkpoints, symptoms, exact guest tuple, and exclusions.
 - [Kernel provenance](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/README.md) and [factory-flashing documentation](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/tools/README.md): build versus hardware evidence and recovery scope.
 - [Linux issue-reporting guide](https://docs.kernel.org/admin-guide/reporting-issues.html): upstream reporting expectations, not an additional tested board procedure.
+
+## Technical notes
+
+**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot, Linux-workstation/NVMe Fedora bootstrap, and the pinned KVM host/guest stages. Carrier PCB revision is not established by `k3-com260-ifx`.
+
+**Evidence:** Public Fedora/KVM record, exported helper guards, recovery-tool results, and the public dldo4 RFC. Checkpoint failures on this page are not all observed defects.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 recorded Fedora/NVMe and KVM setup; the separate dldo4 RFC does not specify an independent test date. No new run; the portable bundle has not been rerun end to end.
+
+**Destructive operations:** None in the report template. Linked installation/recovery procedures can overwrite disks or NOR/UFS; a diagnostic symptom alone is not a reason to reimage or flash.
 
 **Previous:** [Maintain and update](https://github.com/xjamesmorris/k3-com260-info/wiki/Maintain-and-Update) | **Next:** [Kernel and device-tree development](https://github.com/xjamesmorris/k3-com260-info/wiki/Kernel-and-Device-Tree-Development) | [Home](https://github.com/xjamesmorris/k3-com260-info/wiki/Home)

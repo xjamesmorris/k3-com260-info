@@ -2,20 +2,12 @@
 
 # Start here
 
-**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Firefly carrier with unknown PCB revision; Linux workstation and NVMe.
-
-**Evidence:** Recorded Fedora/KVM bring-up and factory-flash results, with public sources linked below.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 Fedora/KVM snapshot; historical stages, not an end-to-end rerun of the portable bundle.
-
-**Destructive operations:** None on this page. The installation overwrites the selected NVMe; factory recovery erases NOR and all UFS, including the saved environment.
-
 This is a practical Fedora-first starting point for advanced early adopters,
-developers, and security researchers working with this kit. Get a Fedora
-shell, understand the limits of the recorded system, then use it for deliberate
-kernel and virtualization experiments or useful upstream reports.
+developers, and security researchers using the Firefly-sold 8 GiB K3-CoM260
+kit on its recorded Firefly carrier. It orients readers to the Linux-workstation
+and NVMe route before they move into installation, kernel, virtualization, or
+contribution work. Get a Fedora shell, understand the limits of the recorded
+system, then use it for deliberate experiments or useful upstream reports.
 
 **Start with [Hardware and setup](https://github.com/xjamesmorris/k3-com260-info/wiki/Hardware-and-Setup).**
 If your hardware and serial console already match, go to
@@ -75,5 +67,17 @@ are useful prior art, not interchangeable carrier or boot instructions.
 For the wider context, see
 [Ecosystem and resources](https://github.com/xjamesmorris/k3-com260-info/wiki/Ecosystem-and-Resources)
 and [Status and sources](https://github.com/xjamesmorris/k3-com260-info/wiki/Status-and-Sources).
+
+## Technical notes
+
+**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Firefly carrier with unknown PCB revision; Linux workstation and NVMe.
+
+**Evidence:** Recorded Fedora/KVM bring-up and factory-flash results, with public sources linked on this page.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 Fedora/KVM snapshot; historical stages, not an end-to-end rerun of the portable bundle.
+
+**Destructive operations:** None on this page. The installation overwrites the selected NVMe; factory recovery erases NOR and all UFS, including the saved environment.
 
 **Next:** [Hardware and setup](https://github.com/xjamesmorris/k3-com260-info/wiki/Hardware-and-Setup).

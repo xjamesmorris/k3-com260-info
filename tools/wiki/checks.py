@@ -12,6 +12,7 @@ from urllib.parse import unquote, urlsplit
 import content as c
 
 FIELDS = ("Applies to", "Evidence", "Source review", "Hardware observation", "Destructive operations")
+NAVIGATION_LABELS = ("Previous:", "Next:", "Start again:")
 ARTIFACT = re.compile(
     r"\.(?:xz|gz|bz2|zip|zst|zstd|tar|img|raw|qcow2|iso|bin|dtb|gguf|onnx|safetensors|"
     r"png|jpe?g|gif|svg|webp|mp4|pdf|deb|rpm|whl|git)(?:$|/)", re.I,
@@ -127,25 +128,141 @@ def headings(data: bytes) -> set[str]:
     return used
 
 
+def heading_text(tokens, index: int) -> str:
+    inline = tokens[index + 1]
+    return "".join(child.content for child in (inline.children or [])
+                   if child.type in ("text", "code_inline", "html_inline")).strip()
+
+
+def field_labels(token) -> list[str]:
+    labels = []
+    strong = None
+    for child in token.children or []:
+        if child.type == "strong_open":
+            strong = []
+        elif child.type == "strong_close" and strong is not None:
+            label = re.sub(r"\s+", " ", "".join(strong)).strip()
+            label = label.removesuffix(":").strip().casefold()
+            labels.extend(field for field in FIELDS if field.casefold() == label)
+            strong = None
+        elif strong is not None and child.type in ("text", "code_inline"):
+            strong.append(child.content)
+        elif strong is not None and child.type in ("softbreak", "hardbreak"):
+            strong.append(" ")
+    return labels
+
+
+def navigation(token) -> None:
+    labels = []
+    links = 0
+    strong = None
+    in_link = False
+    pending_label = False
+    labeled_links = 0
+    for child in token.children or []:
+        if child.type == "text":
+            if strong is not None:
+                strong.append(child.content)
+            elif in_link:
+                continue
+            else:
+                permitted = r"\s*" if pending_label else r"[\s.|]*"
+                c.require(re.fullmatch(permitted, child.content),
+                          "Technical notes navigation has unsupported text")
+        elif child.type == "softbreak":
+            c.require(strong is None and not in_link, "malformed Technical notes navigation")
+        elif child.type == "strong_open":
+            c.require(strong is None and not in_link and not pending_label and child.markup == "**",
+                      "malformed Technical notes navigation label")
+            strong = []
+        elif child.type == "strong_close":
+            c.require(strong is not None and child.markup == "**",
+                      "malformed Technical notes navigation label")
+            label = "".join(strong).strip()
+            c.require(label in NAVIGATION_LABELS, "unsupported Technical notes navigation label")
+            labels.append(label)
+            pending_label = True
+            strong = None
+        elif child.type == "link_open":
+            href = child.attrGet("href")
+            c.require(strong is None and not in_link and isinstance(href, str)
+                      and (href == c.WIKI_URL or href.startswith(c.WIKI_URL + "/")),
+                      "Technical notes navigation must use canonical wiki links")
+            if pending_label:
+                labeled_links += 1
+            else:
+                c.require(labeled_links and href in (c.WIKI_URL, c.WIKI_URL + "/Home"),
+                          "unlabeled Technical notes navigation is limited to Home after a labeled link")
+            in_link = True
+            links += 1
+            pending_label = False
+        elif child.type == "link_close":
+            c.require(in_link, "malformed Technical notes navigation link")
+            in_link = False
+        elif child.type == "code_inline" and in_link:
+            continue
+        else:
+            raise c.Invalid("unsupported Technical notes navigation markup")
+    c.require(strong is None and not in_link and not pending_label and labels and links,
+              "authored page is missing canonical wiki navigation")
+
+
 def metadata(data: bytes, kind: str, today: date) -> dict[str, str]:
     tokens = c.parser().parse(c.text(data))
-    substantive = [t for t in tokens if not (t.type == "html_block"
-                                            and t.content.lstrip().startswith("<!--"))]
-    c.require(substantive and substantive[0].type == "heading_open" and substantive[0].tag == "h1",
+    first = 0
+    while (first < len(tokens) and tokens[first].type == "html_block"
+           and tokens[first].content.lstrip().startswith("<!--")):
+        first += 1
+    c.require(first < len(tokens) and tokens[first].type == "heading_open" and tokens[first].tag == "h1",
               "authored page must begin with an H1 title")
+    c.require(sum(token.type == "heading_open" and token.tag == "h1" for token in tokens) == 1,
+              "authored page must contain exactly one H1 title")
+
+    technical = [index for index, token in enumerate(tokens)
+                 if token.type == "heading_open"
+                 and heading_text(tokens, index).casefold() == "technical notes"]
+    c.require(technical, "missing visible context fields; see tools/wiki/README.md")
+    c.require(len(technical) == 1, "duplicate Technical notes section")
+    section = technical[0]
+    c.require(tokens[section].tag == "h2" and heading_text(tokens, section) == "Technical notes"
+              and tokens[section + 1].content == "Technical notes",
+              "authored page needs an exact H2 Technical notes section")
+    heading_indices = [index for index, token in enumerate(tokens) if token.type == "heading_open"]
+    c.require(section == heading_indices[-1], "Technical notes must be the final heading")
+
+    tail = tokens[section + 3:]
+    c.require(len(tail) >= 18, "missing visible context fields; see tools/wiki/README.md")
+    blocks = []
+    for offset in range(0, 18, 3):
+        opened, inline, closed = tail[offset:offset + 3]
+        c.require(opened.type == "paragraph_open" and opened.level == 0
+                  and inline.type == "inline" and closed.type == "paragraph_close",
+                  "Technical notes must contain top-level field and navigation paragraphs only")
+        blocks.append((section + 4 + offset, inline))
+    c.require(len(tail) == 18,
+              "Technical notes may contain only the five fields and final navigation; "
+              "no content may follow navigation")
+
     fields = {}
-    for token in substantive[3:]:
-        if token.type == "heading_open":
-            break
-        if token.type != "inline":
-            continue
-        for line in token.content.splitlines():
-            for field in FIELDS:
-                match = re.fullmatch(r"\*\*" + re.escape(field) + r":\*\*\s+(.+)", line)
-                if match:
-                    c.require(field not in fields, "duplicate visible context field")
-                    fields[field] = match.group(1).strip()
-    c.require(set(fields) == set(FIELDS), "missing visible context fields; see tools/wiki/README.md")
+    expected_labels = []
+    for (index, token), field in zip(blocks[:5], FIELDS):
+        match = re.fullmatch(r"\*\*" + re.escape(field) + r":\*\*[ \t]+([^\n]+)", token.content)
+        c.require(match is not None, "context fields must use the documented labels and order")
+        fields[field] = match.group(1).strip()
+        expected_labels.append((index, field))
+    navigation(blocks[5][1])
+
+    actual_labels = [(index, field) for index, token in enumerate(tokens) if token.type == "inline"
+                     for field in field_labels(token)]
+    c.require(actual_labels == expected_labels, "duplicate or misplaced visible context field")
+
+    opener = first + 3
+    c.require(opener + 2 < len(tokens)
+              and tokens[opener].type == "paragraph_open" and tokens[opener].level == 0
+              and tokens[opener + 1].type == "inline" and tokens[opener + 1].content.strip()
+              and tokens[opener + 2].type == "paragraph_close",
+              "authored page needs an opening paragraph after its H1")
+
     reviewed = re.match(r"(\d{4}-\d{2}-\d{2})(?:\b|$)", fields["Source review"])
     c.require(reviewed and iso_day(reviewed.group(1), "source review") <= today,
               "missing or future source-review date")

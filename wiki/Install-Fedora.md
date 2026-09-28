@@ -2,15 +2,10 @@
 
 # Install Fedora
 
-**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, carrier PCB revision unknown; Linux workstation, NVMe, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot.
-
-**Evidence:** The preserved September 25 Fedora/KVM recipe and pinned kernel provenance, not a newer-image recommendation.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 historical bootstrap, patched-host and persistent-Fedora-guest stages; portable bundle not rerun end to end.
-
-**Destructive operations:** Imaging overwrites the entire selected NVMe. Optional development stages add host kernel and guest files on NVMe. Deliberately chosen factory recovery erases NOR and all UFS, including the saved environment.
+This page orients experienced Linux bring-up users to the recorded Fedora 44
+route after hardware and serial-console checks are complete. Phase 1 reaches
+the Fedora-on-NVMe installation goal; Phases 2 and 3 are optional kernel and
+KVM development work.
 
 **Use the [Recorded Fedora recipe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe) for every installation, host-transition and guest command.**
 This page supplies orientation and checkpoints, not a second recipe. The
@@ -117,6 +112,18 @@ Before changing packages or kernels, read
 and [Updating this snapshot](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#updating-this-snapshot).
 Newer releases, other carriers and alternative boot routes are not validated
 substitutions.
+
+## Technical notes
+
+**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, carrier PCB revision unknown; Linux workstation, NVMe, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot.
+
+**Evidence:** The preserved September 25 Fedora/KVM recipe and pinned kernel provenance, not a newer-image recommendation.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 historical bootstrap, patched-host and persistent-Fedora-guest stages; portable bundle not rerun end to end.
+
+**Destructive operations:** Imaging overwrites the entire selected NVMe. Optional development stages add host kernel and guest files on NVMe. Deliberately chosen factory recovery erases NOR and all UFS, including the saved environment.
 
 **Previous:** [Console and recovery](https://github.com/xjamesmorris/k3-com260-info/wiki/Console-and-Recovery).
 **Next:** [Maintain and update](https://github.com/xjamesmorris/k3-com260-info/wiki/Maintain-and-Update).

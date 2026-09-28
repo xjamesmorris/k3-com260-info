@@ -50,22 +50,28 @@ def fixture_output():
     return output
 
 
-def page_bytes(title="Fixture", extra=""):
+def page_bytes(title="Fixture", extra="", navigation=None):
+    if extra:
+        extra = extra.rstrip("\n") + "\n\n"
+    navigation = navigation or f"**Next:** [Home]({c.WIKI_URL}/Home)"
     return (
         f"# {title}\n\n"
+        "This fixture page orients experienced readers to its narrow reference scope.\n\n"
+        + extra +
+        "## Technical notes\n\n"
         "**Applies to:** Reference-only fixture; no hardware procedure.\n\n"
         "**Evidence:** Recorded fixture/reference shape only, not a hardware result.\n\n"
         "**Source review:** 2026-09-25.\n\n"
         "**Hardware observation:** Not performed.\n\n"
         "**Destructive operations:** None on this fixture page.\n\n"
-        f"[Home]({c.WIKI_URL}/Home)\n\n" + extra
+        + navigation + "\n"
     ).encode()
 
 
 def manifest_page_bytes(page):
-    extra = "## Fixture\n"
+    extra = "## Fixture\n\nFixture body.\n"
     if page["target"] == "Console-and-Recovery.md":
-        extra += "\n## Factory recovery, only when needed\n"
+        extra += "\n## Factory recovery, only when needed\n\nFixture recovery body.\n"
     return page_bytes(page["title"], extra)
 
 
@@ -233,7 +239,7 @@ class ContentChecks(unittest.TestCase):
 
     def test_metadata_all_fields(self):
         fields = ck.metadata(page_bytes(), "reference", DAY)
-        self.assertEqual(set(fields), set(ck.FIELDS))
+        self.assertEqual(list(fields), list(ck.FIELDS))
 
     def test_missing_or_wrong_parser_has_setup_diagnostic(self):
         with mock.patch.object(c.importlib.metadata, "version", side_effect=c.importlib.metadata.PackageNotFoundError):
@@ -246,12 +252,128 @@ class ContentChecks(unittest.TestCase):
     def test_missing_metadata(self):
         for field in ck.FIELDS:
             lines = [line for line in page_bytes().decode().splitlines() if not line.startswith("**" + field + ":")]
-            with self.subTest(field=field), self.assertRaises(c.Invalid):
+            with self.subTest(field=field), self.assertRaisesRegex(c.Invalid, "missing visible context fields"):
                 ck.metadata("\n".join(lines).encode(), "procedure", DAY)
 
     def test_metadata_in_fence_does_not_count(self):
-        with self.assertRaises(c.Invalid):
+        with self.assertRaisesRegex(c.Invalid, "missing visible context fields"):
             ck.metadata(b"# Test\n\n```text\n" + page_bytes() + b"\n```\n", "reference", DAY)
+
+    def test_old_top_metadata_layout_rejected(self):
+        data = (
+            "# Old layout\n\n"
+            "**Applies to:** Reference-only fixture.\n\n"
+            "**Evidence:** Recorded fixture reference.\n\n"
+            "**Source review:** 2026-09-25.\n\n"
+            "**Hardware observation:** Not performed.\n\n"
+            "**Destructive operations:** None.\n\n"
+            "Opening paragraph.\n\n"
+            f"**Next:** [Home]({c.WIKI_URL}/Home)\n"
+        ).encode()
+        with self.assertRaisesRegex(c.Invalid, "missing visible context fields"):
+            ck.metadata(data, "reference", DAY)
+
+    def test_technical_notes_section_is_exact_unique_and_last(self):
+        cases = (
+            (page_bytes().replace(b"## Technical notes\n\n", b""), "missing visible context fields"),
+            (page_bytes().replace(b"## Technical notes\n\n",
+                                  b"## Technical notes\n\n## Technical notes\n\n"), "duplicate Technical notes"),
+            (page_bytes().replace(b"## Technical notes", b"## technical notes"), "exact H2 Technical notes"),
+            (page_bytes().replace(b"## Technical notes", b"## **Technical notes**"),
+             "exact H2 Technical notes"),
+            (page_bytes() + b"\n## Later heading\n", "final heading"),
+        )
+        for data, message in cases:
+            with self.subTest(message=message), self.assertRaisesRegex(c.Invalid, message):
+                ck.metadata(data, "reference", DAY)
+
+    def test_context_fields_are_top_level_ordered_paragraphs(self):
+        source = page_bytes()
+        cases = (
+            source.replace(b"**Evidence:**", b"- **Evidence:**", 1),
+            source.replace(b"**Evidence:**", b"> **Evidence:**", 1),
+            source.replace(b"**Evidence:** Recorded fixture/reference shape only, not a hardware result.\n\n"
+                           b"**Source review:**",
+                           b"**Evidence:** Recorded fixture/reference shape only, not a hardware result. "
+                           b"**Source review:**", 1),
+            source.replace(b"**Evidence:** Recorded fixture/reference shape only, not a hardware result.",
+                           b"| Field | Value |\n| --- | --- |\n| Evidence | Recorded fixture |", 1),
+        )
+        for data in cases:
+            with self.subTest(data=data[:80]), self.assertRaisesRegex(c.Invalid, "visible context fields|top-level"):
+                ck.metadata(data, "reference", DAY)
+
+    def test_nested_context_field_reaches_top_level_diagnostic(self):
+        data = page_bytes().replace(b"**Evidence:**", b"> **Evidence:**", 1)
+        with self.assertRaisesRegex(c.Invalid, "top-level field"):
+            ck.metadata(data, "reference", DAY)
+
+    def test_context_fields_require_exact_labels_and_order(self):
+        source = page_bytes()
+        applies = b"**Applies to:** Reference-only fixture; no hardware procedure."
+        evidence = b"**Evidence:** Recorded fixture/reference shape only, not a hardware result."
+        cases = (
+            source.replace(applies + b"\n\n" + evidence, evidence + b"\n\n" + applies, 1),
+            source.replace(b"**Evidence:**", b"__Evidence:__", 1),
+            source.replace(b"**Evidence:**", b"**evidence:**", 1),
+            source.replace(b"**Evidence:** Recorded", b"**Evidence:**\nRecorded", 1),
+        )
+        for data in cases:
+            with self.subTest(data=data[:80]), self.assertRaisesRegex(c.Invalid, "documented labels and order"):
+                ck.metadata(data, "reference", DAY)
+
+    def test_duplicate_or_misplaced_context_field_rejected(self):
+        for value in ("**Evidence:** Duplicate body field.",
+                      "__Applies to:__ Near-miss body field.",
+                      "**Applies\nto:** Split body field.",
+                      "**Applies\\\nto:** Hard-split body field.",
+                      "**Applies to :** Spaced body field."):
+            with self.subTest(value=value), self.assertRaisesRegex(c.Invalid, "duplicate or misplaced"):
+                ck.metadata(page_bytes(extra=value), "reference", DAY)
+
+    def test_opening_paragraph_required(self):
+        data = page_bytes().replace(
+            b"This fixture page orients experienced readers to its narrow reference scope.\n\n", b"", 1,
+        )
+        with self.assertRaisesRegex(c.Invalid, "opening paragraph"):
+            ck.metadata(data, "reference", DAY)
+
+    def test_second_h1_rejected(self):
+        data = page_bytes(extra="# Unexpected second title\n\nBody.")
+        with self.assertRaisesRegex(c.Invalid, "exactly one H1"):
+            ck.metadata(data, "reference", DAY)
+
+    def test_supported_navigation_forms(self):
+        home = c.WIKI_URL + "/Home"
+        install = c.WIKI_URL + "/Install-Fedora"
+        forms = (
+            f"**Next:** [Home]({home}).",
+            f"**Previous:** [Home]({home}).\n**Next:** [Install]({install}).",
+            f"**Previous:** [Home]({home}) | **Next:** [Install]({install}) | [Home]({home})",
+            f"**Previous:** [Install]({install}).\n**Start again:** [Home]({home}).",
+        )
+        for value in forms:
+            with self.subTest(value=value):
+                ck.metadata(page_bytes(navigation=value), "reference", DAY)
+
+    def test_navigation_rejects_bad_labels_text_and_destinations(self):
+        forms = (
+            f"**Forward:** [Home]({c.WIKI_URL}/Home)",
+            f"**Next:** explanatory text [Home]({c.WIKI_URL}/Home)",
+            "**Next:** [External](https://example.org/)",
+            f"**Next:** **Previous:** [Home]({c.WIKI_URL}/Home)",
+            f"**Next:** | [Home]({c.WIKI_URL}/Home)",
+            f"[Install]({c.WIKI_URL}/Install-Fedora) | **Next:** [Home]({c.WIKI_URL}/Home)",
+            f"**Previous:** [Home]({c.WIKI_URL}/Home).\n**Next:**",
+        )
+        for value in forms:
+            with self.subTest(value=value), self.assertRaisesRegex(c.Invalid, "navigation"):
+                ck.metadata(page_bytes(navigation=value), "reference", DAY)
+
+    def test_content_after_navigation_rejected(self):
+        for suffix in ("\n\nExtra paragraph.\n", "\n\n---\n", "\n\n<!-- trailing comment -->\n"):
+            with self.subTest(suffix=suffix), self.assertRaisesRegex(c.Invalid, "no content may follow"):
+                ck.metadata(page_bytes() + suffix.encode(), "reference", DAY)
 
     def test_missing_declared_basis(self):
         data = page_bytes().replace(b"Recorded fixture/reference shape only, not a hardware result.", b"Unknown.")
@@ -291,7 +413,7 @@ class ContentChecks(unittest.TestCase):
 
     def test_missing_navigation_rejected(self):
         self.fixture.files["wiki/Home.md"] = page_bytes().replace(f"[Home]({c.WIKI_URL}/Home)".encode(), b"No navigation")
-        with self.assertRaises(c.Invalid):
+        with self.assertRaisesRegex(c.Invalid, "navigation"):
             ck.validate(self.fixture, today=DAY)
 
     def test_bare_wiki_urls_are_checked_locally(self):

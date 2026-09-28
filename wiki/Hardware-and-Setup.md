@@ -2,15 +2,12 @@
 
 # Hardware and setup
 
-**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit; exact carrier PCB model/revision unknown; Linux-workstation/NVMe route.
-
-**Evidence:** Recorded setup in the public Fedora recipe; separately identified manufacturer and seller references.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 Fedora/KVM setup snapshot; no new hardware or electrical measurements.
-
-**Destructive operations:** None on this page. The next installation stage overwrites the entire selected NVMe disk.
+This page is for readers evaluating or preparing the recorded Firefly-sold
+8 GiB K3-CoM260 kit before firmware or disk work. It explains how to
+distinguish the module from its carrier, check the dated recall and power
+references, and assemble the Linux workstation, serial, and NVMe prerequisites.
+Use it to decide whether hardware matches the recorded route, not as a
+compatibility list for other K3 products.
 
 ## Identify the hardware first
 
@@ -112,6 +109,18 @@ is the setup evidence. The linked V2.1 vendor guide names product version
 `K3-CoM260_P1_LP5315B_32X2_v03_20260312`; it is reference documentation, not
 proof of this kit's carrier PCB revision. Match the actual board before using
 its connector diagrams.
+
+## Technical notes
+
+**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit; exact carrier PCB model/revision unknown; Linux-workstation/NVMe route.
+
+**Evidence:** Recorded setup in the public Fedora recipe; separately identified manufacturer and seller references.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 Fedora/KVM setup snapshot; no new hardware or electrical measurements.
+
+**Destructive operations:** None on this page. The linked Install Fedora procedure overwrites the entire selected NVMe disk.
 
 **Previous:** [Start here](https://github.com/xjamesmorris/k3-com260-info/wiki/Home).
 **Next:** [Console and recovery](https://github.com/xjamesmorris/k3-com260-info/wiki/Console-and-Recovery).

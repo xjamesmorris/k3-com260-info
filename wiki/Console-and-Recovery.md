@@ -2,15 +2,12 @@
 
 # Console and recovery
 
-**Applies to:** Recorded Firefly-carrier K3-CoM260 kit and Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; carrier PCB revision unknown.
-
-**Evidence:** Public Fedora serial/boot and Firefly recovery records; UART/ground pin numbers from the conditional V2.1 vendor reference below.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date.
-
-**Destructive operations:** Serial setup does not erase storage. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
+This page is for operators establishing the recorded serial-console checkpoint
+on the Firefly-carrier K3-CoM260 before Fedora bring-up. Start with the normal
+path that keeps matching firmware. Treat recovery as a conditional path for
+needed restoration or a deliberate human choice. The header mapping is
+conditional and specific to the recorded carrier context rather than a
+universal CoM260 pinout.
 
 ## Conditional 12-pin header reference
 
@@ -110,6 +107,18 @@ is retained as historical result provenance:
 manifest pins do not establish successful flashing or booting. Follow the
 maintained tool guide's completion and retry instructions, then re-establish
 the normal serial checkpoint before returning to the Fedora recipe.
+
+## Technical notes
+
+**Applies to:** Recorded Firefly-carrier K3-CoM260 kit and Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; carrier PCB revision unknown.
+
+**Evidence:** Public Fedora serial/boot and Firefly recovery records; UART/ground pin numbers from the conditional V2.1 vendor reference on this page.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date.
+
+**Destructive operations:** Serial setup does not erase storage. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
 
 **Previous:** [Hardware and setup](https://github.com/xjamesmorris/k3-com260-info/wiki/Hardware-and-Setup).
 **Next:** [Install Fedora](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora).

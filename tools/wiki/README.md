@@ -130,9 +130,10 @@ Committed mode reads exact Git objects at the resolved commit, not the
 index, current `HEAD` content, or an unrelated working file. Worktree mode
 has an explicit nonpublication banner and is never accepted by the publisher.
 Both modes check the whole protected how-to tree, exact page/tool inventories
-and modes, parsed links, local anchors, context fields, exception schemas,
-and suspected private data. Neither offline mode establishes external
-availability or supplies the required human semantic/privacy/licensing review.
+and modes, parsed links, local anchors, authored-page opening/Technical-notes
+structure, context fields, final navigation, exception schemas, and suspected
+private data. Neither offline mode establishes external availability or
+supplies the required human semantic/privacy/licensing review.
 
 `render --output` accepts **only `.wiki-build`**. The preview owns its
 manifest-listed Markdown and `.preview.json`; `prepared/` and `tests/` are
@@ -169,15 +170,47 @@ publisher input. Source scripts are never executed or copied into the wiki;
 the guest preparer's explicitly pinned public blob is read only to verify
 its declared default image/checksum constants.
 
-Each authored page begins with an H1 and these visible, non-code fields:
+Each authored page begins with one H1 and a substantive opening paragraph.
+The final heading is exactly `## Technical notes`; it contains these five
+visible, non-code field paragraphs in this order, followed by one canonical
+wiki-navigation paragraph:
 
-```text
+```markdown
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+
+# Page title
+
+Two to four sentences orient the intended technical reader to the page's
+purpose, scope and relationship to the recorded route.
+
+## Page content
+
+...
+
+## Technical notes
+
 **Applies to:** Relevant module/carrier and stack, or reference-only scope.
+
 **Evidence:** Recorded public result, upstream/vendor reference, or untested idea.
+
 **Source review:** YYYY-MM-DD.
+
 **Hardware observation:** Date and scope, or not performed / not applicable / unknown.
+
 **Destructive operations:** Affected storage/actions, or none on this page.
+
+**Previous:** [Previous page](https://github.com/xjamesmorris/k3-com260-info/wiki/Previous) | **Next:** [Next page](https://github.com/xjamesmorris/k3-com260-info/wiki/Next)
 ```
+
+The Technical notes H2 must be unique and the final heading. Its fields are
+five separate top-level paragraphs with exact labels and order; fields in
+lists, quotes, tables, fences or other sections do not count. Duplicate,
+case-changed, underscore-bold or otherwise near-miss labels are rejected.
+The final paragraph must use at least one of the existing `Previous:`,
+`Next:` or `Start again:` labels, with each label followed by a full canonical
+wiki link. An existing unlabeled Home link may follow at least one completed
+labeled destination; other unlabeled links are rejected. No content follows
+that navigation paragraph.
 
 Dates must be real and not in the future on the UTC check date. Procedure
 pages need meaningful applicable hardware/stack and destructive scope.
@@ -185,7 +218,7 @@ Resource pages can say `not applicable`; do not invent a hardware date.
 The generated recipe retains its historical banner and snapshot table rather
 than imposing new fields on the protected source.
 
-All authored pages need canonical wiki navigation. Use full
+All authored-page body and final-navigation links use full
 `https://github.com/xjamesmorris/k3-com260-info/wiki/Slug#heading` links:
 the manifest and parsed headings resolve them locally, even before the page
 exists online. Duplicate headings receive GitHub-style numeric suffixes.
@@ -698,7 +731,7 @@ Glow and these fixtures are not proof of GitHub Wiki rendering parity.
 | Missing/mismatched parser | Restore the reviewed hash-locked venv. The hook does not install on push. |
 | Missing, moved, or unsafe `git`/`gh` | Install the distribution packages so root-owned, non-writable regular executables exist at `/usr/bin/git` and `/usr/bin/gh`. Symlinks, unsafe ancestors, user/group/other-writable tools, or identity drift are refused. Rerun validation, reinstall the hook, and prepare a new receipt after a deliberate package change. |
 | GitHub authentication rejected | Run the token-unset `/usr/bin/gh auth status` command above; if necessary, use `/usr/bin/env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN /usr/bin/gh auth login --hostname github.com --git-protocol https --web`. Review where `gh` stored the credential. Do not pass an environment token, HTTP authorization header, or credential URL to the publisher. Retry the same receipt only if the wiki tip and bound runtime did not move. |
-| Missing visible context or anchor | Correct the canonical page; do not accept an unrelated live wiki page as proof. |
+| Missing opener, Technical notes, visible context, final navigation or anchor | Correct the canonical authored page; keep the exact field order and final canonical navigation, and do not accept an unrelated live wiki page as proof. |
 | Privacy finding | Inspect the identified blob/line locally; sanitize or obtain a genuinely human-reviewed exact allowance. Do not paste the matched data into a public issue/report. |
 | Different tool or intermediate validator | Review it and run the fixtures, then explicitly install that reviewed committed tool. Never execute untrusted push inputs to make the gate pass. |
 | `.git/wiki-validator/.partial-*` candidate | An interrupted/failed install did not configure this candidate. Retry the same reviewed commit; the installer builds a fresh stage or verifies a completed final bundle. Preserve partials for inspection and remove only individually verified owned artifacts, not the bundle parent. |

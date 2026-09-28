@@ -2,15 +2,12 @@
 
 # Maintain and update
 
-**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot, and the recorded Fedora 44 NVMe route. `k3-com260-ifx` is a DT filename, not proof of the carrier PCB revision.
-
-**Evidence:** The public September 25 Fedora/KVM snapshot and its exported build, transfer, and installation helpers; not a general Fedora upgrade procedure.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 recorded Fedora/NVMe and KVM-host setup; individual historical step dates are not specified. No new hardware run or end-to-end rerun of the portable bundle.
-
-**Destructive operations:** The linked host transition writes new files under `/boot` and `/lib/modules` and requires an attended reset. Reimaging destroys the selected disk; factory recovery rewrites NOR and all UFS contents. Neither is a routine update step.
+This page is for operators maintaining the recorded Fedora 44 NVMe system
+after the bootstrap installation or optional KVM-host transition. It
+distinguishes running, installed, and temporarily selected boot sets when
+Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot remains the manual selector. Use it
+to plan kernel and package changes without assuming a conventional GRUB,
+grubby, or RPM-managed boot workflow.
 
 **Installing a kernel does not select it for this direct-boot route.** The
 exercised change was a side-by-side installation followed by temporary U-Boot
@@ -129,5 +126,17 @@ this page does not supply an unperformed upgrade walkthrough.
 - [Preserved Fedora/KVM record](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md) and [kernel provenance](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/README.md): the dated maintenance and artifact contract.
 - [Recovery tool and recorded image results](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/tools/README.md): destructive scope; manifest pins are separate from successful flashing.
 - [U-Boot `booti` documentation](https://docs.u-boot.org/en/latest/usage/cmd/booti.html): upstream command semantics only, not a replacement for the recorded board-specific boot sequence.
+
+## Technical notes
+
+**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot, and the recorded Fedora 44 NVMe route. `k3-com260-ifx` is a DT filename, not proof of the carrier PCB revision.
+
+**Evidence:** The public September 25 Fedora/KVM snapshot and its exported build, transfer, and installation helpers; not a general Fedora upgrade procedure.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 recorded Fedora/NVMe and KVM-host setup; individual historical step dates are not specified. No new hardware run or end-to-end rerun of the portable bundle.
+
+**Destructive operations:** The linked host transition writes new files under `/boot` and `/lib/modules` and requires an attended reset. Reimaging destroys the selected disk; factory recovery rewrites NOR and all UFS contents. Neither is a routine update step.
 
 **Previous:** [Install Fedora](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora) | **Next:** [Diagnostics and known limits](https://github.com/xjamesmorris/k3-com260-info/wiki/Diagnostics-and-Known-Limits) | [Home](https://github.com/xjamesmorris/k3-com260-info/wiki/Home)

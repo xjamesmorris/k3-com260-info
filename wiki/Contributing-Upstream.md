@@ -2,22 +2,13 @@
 
 # Contributing upstream
 
-**Applies to:** Preparing Fedora, Linux/RISC-V, KVM, QEMU, toolchain, and llama.cpp contributions from public K3-CoM260/Firefly evidence.
-
-**Evidence:** Worked preparation examples from the public dldo4 RFC and Fedora guest record; official project routes and policies for other work.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** Fedora/KVM snapshot dated 2026-09-25. The dldo4 RFC is dated 2026-09-22 PDT but does not separately date its hardware test. No new tests performed here.
-
-**Destructive operations:** None on this page. Reproduction that boots another kernel or writes storage is separate, attended work; the examples below do not authorize it.
-
-A useful contribution connects **one reproducible observation, an exact
-target, and an honestly bounded result**. This page teaches preparation, not
-autonomous submission. The human author reviews the evidence, understands
-the change, checks provenance, and decides whether and where to send it.
-Handling incoming contributions to this wiki/repository is deferred; helping
-readers contribute to the projects below is not.
+This page is for readers turning public K3-CoM260/Firefly evidence into an
+upstream report or patch. A useful contribution connects **one reproducible
+observation, an exact target, and an honestly bounded result**. The page
+teaches preparation, not autonomous submission: the human author reviews the
+evidence, understands the change, checks provenance, and decides whether and
+where to send it. Handling incoming contributions to this wiki/repository is
+deferred; helping readers contribute to the projects below is not.
 
 ## Worked preparation: dldo4 RFC
 
@@ -141,6 +132,18 @@ Re-read the destination's policy immediately before preparing and sending
 work. Preserve licenses and genuine existing author/review/test trailers;
 never manufacture a human sign-off or test endorsement. Submission, issue
 creation, email, and publication remain human-controlled actions.
+
+## Technical notes
+
+**Applies to:** Preparing Fedora, Linux/RISC-V, KVM, QEMU, toolchain, and llama.cpp contributions from public K3-CoM260/Firefly evidence.
+
+**Evidence:** Worked preparation examples from the public dldo4 RFC and Fedora guest record; official project routes and policies for other work.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** Fedora/KVM snapshot dated 2026-09-25. The dldo4 RFC is dated 2026-09-22 PDT but does not separately date its hardware test. No new tests performed here.
+
+**Destructive operations:** None on this page. Reproduction that boots another kernel or writes storage is separate, attended work; the examples on this page do not authorize it.
 
 **Previous:** [AI and toolchains](https://github.com/xjamesmorris/k3-com260-info/wiki/AI-and-Toolchains).
 **Next:** [Ecosystem and resources](https://github.com/xjamesmorris/k3-com260-info/wiki/Ecosystem-and-Resources).

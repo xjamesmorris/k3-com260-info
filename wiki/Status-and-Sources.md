@@ -2,19 +2,13 @@
 
 # Status and sources
 
-**Applies to:** This wiki's public evidence, especially the 8 GiB K3-CoM260/Firefly, Bianbu Minimal K3 v4.0.1 non-UEFI, Linux-workstation/NVMe Fedora route.
-
-**Evidence:** Dated public hardware record, pinned public patch/configuration provenance, and separately reviewed official project/vendor references.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** 2026-09-25 Fedora/KVM snapshot. No hardware result was added by this source review.
-
-**Destructive operations:** None on this page. The linked Fedora installation overwrites the selected NVMe disk; factory recovery erases NOR and UFS. References are not authorization to perform either.
-
-**A source-review date is not a hardware-test date.** This wiki is a curated
-guide to a recorded configuration and useful development work, not a rolling
-certification of K3 hardware, every Fedora image, or current upstream Linux.
+This page is for readers evaluating or extending a claim made elsewhere in
+the wiki. It explains the source hierarchy, dated project status, and the
+distinction between Source review and Hardware observation recorded in each
+page's Technical notes. **A source-review date is not a hardware-test date.**
+This wiki is a curated guide to a recorded configuration and useful development
+work, not a rolling certification of K3 hardware, every Fedora image, or
+current upstream Linux.
 
 ## Source hierarchy
 
@@ -132,6 +126,18 @@ whole translations or reproduced manual figures. The
 [LLM policy](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/LLM-POLICY.md)
 leaves authorship, understanding, provenance review, DCO certification, and
 publication with the human author.
+
+## Technical notes
+
+**Applies to:** This wiki's public evidence, especially the 8 GiB K3-CoM260/Firefly, Bianbu Minimal K3 v4.0.1 non-UEFI, Linux-workstation/NVMe Fedora route.
+
+**Evidence:** Dated public hardware record, pinned public patch/configuration provenance, and separately reviewed official project/vendor references.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** 2026-09-25 Fedora/KVM snapshot. No hardware result was added by this source review.
+
+**Destructive operations:** None on this page. The linked Fedora installation overwrites the selected NVMe disk; factory recovery erases NOR and UFS. References are not authorization to perform either.
 
 **Previous:** [Ecosystem and resources](https://github.com/xjamesmorris/k3-com260-info/wiki/Ecosystem-and-Resources).
 **Start again:** [Home](https://github.com/xjamesmorris/k3-com260-info/wiki/Home).

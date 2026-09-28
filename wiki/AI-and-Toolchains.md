@@ -2,15 +2,12 @@
 
 # AI and toolchains
 
-**Applies to:** SpacemiT K3 X100 and SpacemiT A100 core capabilities; Fedora development on the recorded K3-CoM260/Firefly host. Other software stacks are references only.
-
-**Evidence:** Public Fedora/KVM record, vendor architecture and inference documentation, and upstream source/documentation review; development opportunities are not completed experiments.
-
-**Source review:** 2026-09-27.
-
-**Hardware observation:** No AI inference experiment recorded here. The cited Fedora/KVM hardware snapshot is 2026-09-25, not an AI result.
-
-**Destructive operations:** None on this page. No model download, inference, affinity change, or CPU-enablement procedure is provided.
+This page is a source and vendor orientation for developers evaluating
+SpacemiT K3 CPU capabilities from the recorded Fedora host. It separates
+vendor-described X100 and SpacemiT A100 capabilities from Fedora/KVM evidence
+and does not document an AI inference experiment. Use it to frame compiler,
+runtime, packaging, or library work rather than as an enablement or
+performance guide.
 
 **SpacemiT A100 AI cores are not NVIDIA A100 accelerators.** SpacemiT uses
 the name for RISC-V cores inside K3; NVIDIA's
@@ -82,6 +79,18 @@ Before preparing a contribution, read the
 GCC, LLVM, and llama.cpp do not share one AI-use policy. In particular,
 llama.cpp requires human-written contribution communication; this page is
 orientation, not text to paste into an upstream report.
+
+## Technical notes
+
+**Applies to:** SpacemiT K3 X100 and SpacemiT A100 core capabilities; Fedora development on the recorded K3-CoM260/Firefly host. Other software stacks are references only.
+
+**Evidence:** Public Fedora/KVM record, vendor architecture and inference documentation, and upstream source/documentation review; development opportunities are not completed experiments.
+
+**Source review:** 2026-09-27.
+
+**Hardware observation:** No AI inference experiment recorded here. The cited Fedora/KVM hardware snapshot is 2026-09-25, not an AI result.
+
+**Destructive operations:** None on this page. No model download, inference, affinity change, or CPU-enablement procedure is provided.
 
 **Previous:** [KVM and QEMU](https://github.com/xjamesmorris/k3-com260-info/wiki/KVM-and-QEMU).
 **Next:** [Contributing upstream](https://github.com/xjamesmorris/k3-com260-info/wiki/Contributing-Upstream).
