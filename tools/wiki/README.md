@@ -637,6 +637,13 @@ certify a DCO sign-off.
 .wiki-venv/bin/python -B tools/wiki/manage.py prepare \
   --source "$FULL_PUBLIC_SOURCE_COMMIT"
 
+# After deliberate source reconciliation of a reviewed web edit, set
+# WEB_EDITED_WIKI_TIP to the exact reviewed advertised default-branch OID.
+# This is not an adoption or a force-push.
+.wiki-venv/bin/python -B tools/wiki/manage.py prepare \
+  --source "$FULL_PUBLIC_SOURCE_COMMIT" \
+  --reconcile-web-tip "$WEB_EDITED_WIKI_TIP"
+
 glow -p .wiki-build/prepared/RECEIPT_SHA256/report.md
 glow -p .wiki-build/prepared/RECEIPT_SHA256/tree/Home.md
 glow -p .wiki-build/prepared/RECEIPT_SHA256/tree/Fedora-Recipe.md
@@ -658,6 +665,14 @@ identities, exact file hashes, bounded link results/used exceptions and the
 complete managed diff. No ambient login names, local paths or private intake
 identities from the build machine appear in its provenance. The deliberately
 reviewed public publisher identity is bound separately.
+
+`--reconcile-web-tip` is a narrow recovery path for an exact, human-reviewed
+web-edited tip after a recognized publisher commit. It accepts only a short
+linear chain, keeps the last curated checkout intact until publication, and
+places the complete live-to-canonical diff and every reconciled web commit in
+the receipt report. Publication remains one normal forward commit whose parent
+is that exact web tip. It does not rewrite history, adopt a non-root wiki, or
+permit an unreviewed remote change.
 
 The publish command is the **separate receipt-bound wiki approval gate**. Its
 pre-push/read-back fetches remain anonymous. Only its single normal
@@ -739,7 +754,8 @@ Glow and these fixtures are not proof of GitHub Wiki rendering parity.
 | Online availability or used exception changed | Prepare and review a new receipt showing the new verdict/exception-use set. A valid but previously unused exception does not authorize a silent publication-state change. |
 | Source not public on main | Obtain permission for the canonical content push first; neither helper performs it. |
 | Initial Home bytes differ from `bootstrap_home`, or Home was saved more than once | Do not make another browser edit, amend, or force-push wiki history. Inspect `/usr/bin/git -C .wiki-publish rev-list --parents -n 1 "$INITIAL_HOME_COMMIT"` and `/usr/bin/git -C .wiki-publish show "${INITIAL_HOME_COMMIT}:Home.md"`. If the advertised commit is the acceptable reviewed **root** bootstrap, update `bootstrap_home` to those exact public bytes through a separately reviewed canonical tool/manifest commit, reinstall that reviewed hook, obtain a new content-push approval, and prepare again. A second browser save produces a non-root tip and therefore requires explicit reconciliation rather than another edit. |
-| Wiki web edit/extra file or default-branch change | Preserve it, reconcile it into canonical source deliberately, and prepare a new receipt. Do not force-push over it. |
+| Wiki web edit/extra file | Preserve it, reconcile it into canonical source deliberately, push that reviewed source, then prepare with `--reconcile-web-tip` set to the exact advertised wiki OID. Review the complete live-to-canonical diff before separately approving publication. Do not browser-edit again or force-push over it. |
+| Wiki default-branch change or nonlinear web history | Preserve it and reconcile the repository state explicitly. The bounded web-tip recovery accepts only a short linear chain after a recognized publisher commit. |
 | Dirty source/clone or preview | Preserve unrelated edits. Inspect the exact files rather than broadly cleaning/resetting directories. |
 | `.partial-*` preparation | An interrupted preparation is not a receipt. Retry creates a fresh named staging directory; old partials remain for inspection. Remove only individually verified owned artifacts. |
 | `.git/wiki-transaction.json` in the publication clone | A write/push was interrupted. Retry the **same** receipt; it recognizes only that bound transaction, old/prepared file bytes and deterministic candidate commit. A different receipt or unrelated edit is refused. |

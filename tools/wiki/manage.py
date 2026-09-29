@@ -33,7 +33,9 @@ def arguments():
     command.add_argument("--ref", required=True)
     command = commands.add_parser("prepare")
     command.add_argument("--source", required=True)
-    command.add_argument("--adopt-bootstrap")
+    prior = command.add_mutually_exclusive_group()
+    prior.add_argument("--adopt-bootstrap")
+    prior.add_argument("--reconcile-web-tip")
     command = commands.add_parser("publish")
     command.add_argument("--receipt", required=True, type=Path)
     command.add_argument("--expect-receipt", required=True)
@@ -68,7 +70,7 @@ def main() -> int:
         elif args.command == "check-links":
             print(c.canonical(p.check_links(root, args.ref)).decode(), end="")
         elif args.command == "prepare":
-            path, digest = p.prepare(root, args.source, args.adopt_bootstrap)
+            path, digest = p.prepare(root, args.source, args.adopt_bootstrap, args.reconcile_web_tip)
             print(f"Prepared receipt SHA256: {digest}\nReview: {path.relative_to(root).as_posix()}")
         elif args.command == "publish":
             result = p.publish(root, args.receipt, args.expect_receipt)

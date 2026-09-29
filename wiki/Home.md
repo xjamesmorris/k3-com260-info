@@ -2,6 +2,11 @@
 
 # Start here
 
+**Fedora on the SpacemiT K3-CoM260**
+
+> **Unofficial resource:** This guide is user-developed and maintained; it is
+> not an official Fedora Project resource.
+
 This is a practical Fedora-first starting point for advanced early adopters,
 developers, and security researchers using the Firefly-sold 8 GiB K3-CoM260
 kit on its recorded Firefly carrier. It orients readers to the Linux-workstation
@@ -74,7 +79,7 @@ and [Status and sources](https://github.com/xjamesmorris/k3-com260-info/wiki/Sta
 
 **Evidence:** Recorded Fedora/KVM bring-up and factory-flash results, with public sources linked on this page.
 
-**Source review:** 2026-09-27.
+**Source review:** 2026-09-29.
 
 **Hardware observation:** 2026-09-25 Fedora/KVM snapshot; historical stages, not an end-to-end rerun of the portable bundle.
 

@@ -1207,8 +1207,8 @@ class GitFixture(unittest.TestCase):
     def public_source(self, oid=None):
         self.git.run("push", "-q", "--", str(self.source_remote), (oid or self.git.commit("HEAD")) + ":refs/heads/main")
 
-    def prepare(self, source=None, adopt=True):
-        return p.prepare(self.root, source or self.git.commit("HEAD"), self.bootstrap if adopt else None,
+    def prepare(self, source=None, adopt=True, reconcile=None):
+        return p.prepare(self.root, source or self.git.commit("HEAD"), self.bootstrap if adopt else None, reconcile,
                          remote=self.remote, checker=self.online)
 
     def publish(self, prepared):
@@ -1221,10 +1221,12 @@ class GitFixture(unittest.TestCase):
         p.content_pre_push(self.root, data, "origin", c.SOURCE_URL, trust or self.trust,
                            remote=self.remote, test_runner=lambda: None)
 
-    def wiki_edit(self, name="Web-edit.md", data=b"# Fixture web edit\n", root=False, mode="100644"):
+    def wiki_edit(self, name="Web-edit.md", data=b"# Fixture web edit\n", root=False, mode="100644", delete=()):
         tip = c.Git(self.wiki_remote).commit("HEAD")
         self.seed.run("fetch", "-q", "--", str(self.wiki_remote), "refs/heads/master")
         self.seed.run("read-tree", tip)
+        for path in delete:
+            self.seed.run("update-index", "--force-remove", "--", path)
         oid = self.seed.run("hash-object", "-w", "--stdin", input=data).decode().strip()
         self.seed.run("update-index", "--add", "--cacheinfo", mode + "," + oid + "," + name)
         tree = self.seed.run("write-tree").decode().strip()
@@ -2224,6 +2226,64 @@ class PublicationFixtures(GitFixture):
         self.wiki_edit()
         with self.assertRaises(c.Invalid):
             self.prepare(adopt=False)
+
+    def test_explicit_reconciliation_restores_home_after_unicode_web_rename(self):
+        self.publish(self.prepare())
+        remote = c.Git(self.wiki_remote)
+        published = remote.commit("HEAD")
+        home = remote.blob(remote.entries("HEAD")["Home.md"][2])
+        renamed = "Home-\u2010-Fixture-Wiki.md"
+        first = self.wiki_edit(
+            name=renamed,
+            data=home + b"\nFixture web disclaimer.\n",
+            delete=("Home.md",),
+        )
+        second = self.wiki_edit(name=renamed, data=home + b"\nFixture web disclaimer; edited.\n")
+        with self.assertRaises(c.Invalid):
+            self.prepare(adopt=False)
+        prepared = self.prepare(adopt=False, reconcile=second)
+        receipt, _ = p.read_receipt(self.root, prepared[0], prepared[1])
+        self.assertEqual(receipt["wiki"]["state"]["kind"], "reconcile")
+        self.assertEqual(receipt["wiki"]["state"]["published_oid"], published)
+        self.assertEqual(receipt["wiki"]["state"]["web_commits"], [first, second])
+        report = (prepared[0].parent / "report.md").read_text()
+        self.assertIn(renamed, report)
+        self.assertIn("Fixture web disclaimer; edited.", report)
+        self.assertEqual(self.publish(prepared), "published")
+        tip = remote.commit("HEAD")
+        self.assertEqual(remote.run("rev-list", "--parents", "-n", "1", tip).decode().split(), [tip, second])
+        self.assertIn("Home.md", remote.entries("HEAD"))
+        self.assertNotIn(renamed, remote.entries("HEAD"))
+
+    def test_reconciliation_requires_the_exact_current_web_tip(self):
+        self.publish(self.prepare())
+        published = c.Git(self.wiki_remote).commit("HEAD")
+        self.wiki_edit()
+        with self.assertRaises(c.Invalid):
+            self.prepare(adopt=False, reconcile=published)
+
+    def test_reconciliation_preserves_an_unreviewed_local_edit(self):
+        self.publish(self.prepare())
+        web_tip = self.wiki_edit()
+        prepared = self.prepare(adopt=False, reconcile=web_tip)
+        receipt, _ = p.read_receipt(self.root, prepared[0], prepared[1])
+        wiki = c.Git(self.root / s.PUBLISH)
+        marker = {
+            "receipt_sha256": prepared[1],
+            "expected": web_tip,
+            "tree": receipt["output"]["git_tree"],
+        }
+        s.write(p.transaction_path(wiki), "wiki-transaction.json", c.canonical(marker), mode=0o600)
+        (wiki.root / "Home.md").write_bytes(b"Unreviewed local edit\n")
+        with self.assertRaises(c.Invalid):
+            self.publish(prepared)
+        self.assertEqual((wiki.root / "Home.md").read_bytes(), b"Unreviewed local edit\n")
+        self.assertEqual(c.Git(self.wiki_remote).commit("HEAD"), web_tip)
+
+    def test_reconciliation_requires_a_managed_publisher_ancestor(self):
+        web_tip = self.wiki_edit()
+        with self.assertRaises(c.Invalid):
+            self.prepare(adopt=False, reconcile=web_tip)
 
     def test_remote_web_edit_stops_publication(self):
         prepared = self.prepare()

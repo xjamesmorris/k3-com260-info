@@ -18,6 +18,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import unicodedata
 import uuid
 
 import checks
@@ -40,6 +41,7 @@ ZERO = "0" * 40
 GIT_READ_TIMEOUT = 90
 GIT_PUSH_TIMEOUT = 600
 TRUSTED_SUITE_TIMEOUT = 600
+MAX_RECONCILE_COMMITS = 32
 GITHUB_TOKEN_ENV = {
     "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
 }
@@ -363,13 +365,33 @@ class PublicRemotes:
         return default, wanted[default]
 
 
-def wiki_tree(git: c.Git, oid: str) -> dict[str, bytes]:
+def web_page_name(path: str) -> bool:
+    try:
+        encoded = path.encode("utf-8")
+    except UnicodeError:
+        return False
+    return (
+        0 < len(encoded) <= 255
+        and not path.startswith(".")
+        and path.endswith(".md")
+        and "/" not in path
+        and "\\" not in path
+        and all(ch.isalnum() or ch in "._-" or unicodedata.category(ch) == "Pd" for ch in path)
+    )
+
+
+def wiki_tree(git: c.Git, oid: str, *, managed: bool = True) -> dict[str, bytes]:
     entries = git.entries(oid)
+    c.require(len(entries) <= 256, "wiki tree has too many files")
     output = {}
+    total = 0
     for path, (mode, kind, blob) in entries.items():
-        c.require("/" not in path and (c.SLUG_RE.fullmatch(path) or path in ("_Sidebar.md", "_Footer.md"))
-                  and kind == "blob" and mode == "100644", "unexpected wiki path, mode, or object")
-        output[path] = git.blob(blob)
+        valid_name = (c.SLUG_RE.fullmatch(path) or path in ("_Sidebar.md", "_Footer.md")) if managed else web_page_name(path)
+        c.require(valid_name and kind == "blob" and mode == "100644", "unexpected wiki path, mode, or object")
+        data = git.blob(blob)
+        total += len(data)
+        c.require(managed or total <= c.MAX_INPUT, "web-edited wiki tree exceeds the reconciliation input limit")
+        output[path] = data
     c.require(len({p.casefold() for p in output}) == len(output), "case-colliding wiki pages")
     return output
 
@@ -392,9 +414,15 @@ def provenance_message(receipt: dict) -> bytes:
     ).encode()
 
 
-def read_provenance(git: c.Git, oid: str) -> dict:
+def provenance_values(git: c.Git, oid: str) -> list[str]:
     message = git.run("show", "-s", "--format=%B", oid).decode("utf-8")
     values = [line[len(PROVENANCE):] for line in message.splitlines() if line.startswith(PROVENANCE)]
+    c.require(len(values) <= 1, "wiki commit has ambiguous publisher provenance")
+    return values
+
+
+def read_provenance(git: c.Git, oid: str) -> dict:
+    values = provenance_values(git, oid)
     c.require(len(values) == 1, "wiki tip is not a recognized publisher commit; reconcile web edits first")
     value = c.load_json(values[0].encode(), "public provenance")
     c.object_keys(value, {"schema", "source", "source_tree", "identities", "output", "wiki_branch", "parent"})
@@ -404,16 +432,8 @@ def read_provenance(git: c.Git, oid: str) -> dict:
     return value
 
 
-def remote_state(source: c.Snapshot, wiki: c.Git, wiki_ref: str, tip: str,
-                 source_tip: str, adoption: str | None) -> dict:
+def managed_state(source: c.Snapshot, wiki: c.Git, wiki_ref: str, tip: str, source_tip: str) -> dict:
     output = wiki_tree(wiki, tip)
-    if adoption is not None:
-        c.require(adoption == tip, "bootstrap adoption OID differs from the freshly advertised wiki tip")
-        c.require(wiki.run("rev-list", "--parents", "-n", "1", tip).decode().split() == [tip],
-                  "bootstrap adoption is one-time and requires the initial root Home commit")
-        expected = {"Home.md": c.manifest(source)["bootstrap_home"].encode()}
-        c.require(output == expected, "bootstrap must contain exactly the documented regular Home.md bytes")
-        return {"kind": "bootstrap", "home_blob": c.blob_id(expected["Home.md"])}
     prior = read_provenance(wiki, tip)
     c.require(prior["wiki_branch"] == wiki_ref, "wiki provenance branch changed")
     previous = c.Snapshot(source.root, prior["source"])
@@ -425,6 +445,58 @@ def remote_state(source: c.Snapshot, wiki: c.Git, wiki_ref: str, tip: str,
     c.require(s.tree_record(expected) == prior["output"] and output == expected,
               "wiki has unrecognized edits or extra files; reconcile into canonical source first")
     return {"kind": "managed", "previous_source": previous.commit, "previous_tree": prior["output"]["git_tree"]}
+
+
+def reconciliation_state(source: c.Snapshot, wiki: c.Git, wiki_ref: str, tip: str,
+                         source_tip: str) -> dict:
+    wiki_tree(wiki, tip, managed=False)
+    commits = wiki.run(
+        "rev-list", "--first-parent", "--max-count", str(MAX_RECONCILE_COMMITS + 2), tip
+    ).decode().splitlines()
+    c.require(commits and commits[0] == tip, "cannot inspect the web-edited wiki history")
+    web_commits = []
+    published = None
+    for index, oid in enumerate(commits):
+        values = provenance_values(wiki, oid)
+        if values:
+            published = oid
+            break
+        parents = wiki.run("rev-list", "--parents", "-n", "1", oid).decode().split()
+        c.require(
+            len(parents) == 2
+            and parents[0] == oid
+            and index + 1 < len(commits)
+            and parents[1] == commits[index + 1],
+            "web-edited wiki history must be a short linear chain",
+        )
+        web_commits.append(oid)
+    c.require(published is not None and web_commits, "no prior managed wiki publication found for reconciliation")
+    c.require(len(web_commits) <= MAX_RECONCILE_COMMITS, "too many web commits for one reviewed reconciliation")
+    previous = managed_state(source, wiki, wiki_ref, published, source_tip)
+    return {
+        "kind": "reconcile",
+        "published_oid": published,
+        "web_commits": list(reversed(web_commits)),
+        "previous_source": previous["previous_source"],
+        "previous_tree": previous["previous_tree"],
+    }
+
+
+def remote_state(source: c.Snapshot, wiki: c.Git, wiki_ref: str, tip: str,
+                 source_tip: str, adoption: str | None, reconciliation: str | None = None) -> dict:
+    c.require(not (adoption and reconciliation), "bootstrap adoption and web reconciliation are mutually exclusive")
+    if reconciliation is not None:
+        c.require(reconciliation == tip, "reconciliation OID differs from the freshly advertised wiki tip")
+        return reconciliation_state(source, wiki, wiki_ref, tip, source_tip)
+    output = wiki_tree(wiki, tip)
+    if adoption is not None:
+        c.require(adoption == tip, "bootstrap adoption OID differs from the freshly advertised wiki tip")
+        c.require(wiki.run("rev-list", "--parents", "-n", "1", tip).decode().split() == [tip],
+                  "bootstrap adoption is one-time and requires the initial root Home commit")
+        expected = {"Home.md": c.manifest(source)["bootstrap_home"].encode()}
+        c.require(output == expected, "bootstrap must contain exactly the documented regular Home.md bytes")
+        return {"kind": "bootstrap", "home_blob": c.blob_id(expected["Home.md"])}
+    return managed_state(source, wiki, wiki_ref, tip, source_tip)
 
 
 def bundle_directories() -> list[str]:
@@ -652,6 +724,7 @@ def check_clone_files(wiki: c.Git, expected: dict[str, bytes]) -> None:
 
 
 def report_bytes(receipt: dict, online: list[dict], old: dict[str, bytes], new: dict[str, bytes]) -> bytes:
+    state = receipt["wiki"]["state"]
     lines = [
         "# Prepared wiki publication\n\n",
         "This is a review artifact, not permission to publish. Human semantic, privacy, licensing, "
@@ -661,9 +734,18 @@ def report_bytes(receipt: dict, online: list[dict], old: dict[str, bytes], new: 
         f"- Expected wiki head: `{receipt['wiki']['expected_oid']}`\n",
         f"- Wiki branch: `{receipt['wiki']['branch']}`\n",
         f"- Rendered tree: `{receipt['output']['git_tree']}`\n",
-        f"- Adoption: `{receipt['wiki']['state']['kind']}`\n\n",
-        "## Exact output\n\n",
+        f"- Remote state: `{state['kind']}`\n",
     ]
+    if state["kind"] == "reconcile":
+        lines.extend([
+            f"- Last curated wiki head: `{state['published_oid']}`\n",
+            "- Web commits being reconciled: "
+            + ", ".join(f"`{oid}`" for oid in state["web_commits"]) + "\n",
+        ])
+    lines.extend([
+        "\n",
+        "## Exact output\n\n",
+    ])
     lines.extend(f"- `{name}`: SHA256 `{entry['sha256']}`, {entry['size']} bytes\n"
                  for name, entry in receipt["output"]["files"].items())
     lines.append("\n## Bounded public link checks\n\n")
@@ -702,13 +784,17 @@ def publisher_identity(source: c.Snapshot) -> dict:
     return author
 
 
-def prepare(root: Path, source_ref: str, adoption: str | None = None, *,
+def prepare(root: Path, source_ref: str, adoption: str | None = None,
+            reconciliation: str | None = None, *,
             remote: PublicRemotes | None = None, checker: httpcheck.Checker | None = None) -> tuple[Path, str]:
     remote, checker = remote or PublicRemotes(), checker or httpcheck.Checker()
     source = c.Snapshot(root, source_ref)
     c.require(source_ref == source.commit, "prepare --source requires the full reviewed commit OID")
     if adoption is not None:
         c.require(c.OID_RE.fullmatch(adoption), "bootstrap adoption requires a full reviewed commit OID")
+    if reconciliation is not None:
+        c.require(c.OID_RE.fullmatch(reconciliation), "web reconciliation requires a full reviewed commit OID")
+    c.require(not (adoption and reconciliation), "bootstrap adoption and web reconciliation are mutually exclusive")
     clean(source.git)
     bound = bind_running_tool(source)
     c.require(read_bundle(installed_bundle(source.git))["identities"]["tool_files"] == bound["tool_files"],
@@ -718,8 +804,9 @@ def prepare(root: Path, source_ref: str, adoption: str | None = None, *,
     online = checker.all(checked.links, checked.exceptions)
     wiki = ensure_wiki(root, remote)
     wiki_ref, tip = remote.wiki(wiki)
-    state = remote_state(source, wiki, wiki_ref, tip, source_tip, adoption)
-    checkout_initial(wiki, wiki_ref, tip, wiki_tree(wiki, tip))
+    state = remote_state(source, wiki, wiki_ref, tip, source_tip, adoption, reconciliation)
+    checkout_oid = state["published_oid"] if state["kind"] == "reconcile" else tip
+    checkout_initial(wiki, wiki_ref, checkout_oid, wiki_tree(wiki, checkout_oid))
     receipt = {
         "schema": 1,
         "source": {"url": c.SOURCE_URL, "branch": c.SOURCE_BRANCH, "commit": source.commit,
@@ -732,7 +819,12 @@ def prepare(root: Path, source_ref: str, adoption: str | None = None, *,
         "wiki": {"url": c.WIKI_REPO, "branch": wiki_ref, "expected_oid": tip, "state": state},
         "checked_day": utc_day().isoformat(),
     }
-    report = report_bytes(receipt, online, wiki_tree(wiki, tip), checked.output)
+    report = report_bytes(
+        receipt,
+        online,
+        wiki_tree(wiki, tip, managed=state["kind"] != "reconcile"),
+        checked.output,
+    )
     c.require(len(report) <= c.MAX_INPUT, "prepared report exceeds the bounded text-input limit")
     receipt["report_sha256"] = c.sha256(report)
     data = c.canonical(receipt)
@@ -837,10 +929,17 @@ def verify_receipt(root: Path, path: Path, digest: str, remote: PublicRemotes,
         c.require(prior["parent"] == receipt["wiki"]["expected_oid"], "unexpected publication parent")
     else:
         state = receipt["wiki"]["state"]
-        c.require(isinstance(state, dict) and state.get("kind") in ("bootstrap", "managed"),
-                  "invalid adoption state")
-        actual = remote_state(source, wiki, ref, tip, source_tip,
-                              tip if state["kind"] == "bootstrap" else None)
+        c.require(isinstance(state, dict) and state.get("kind") in ("bootstrap", "managed", "reconcile"),
+                  "invalid publication state")
+        actual = remote_state(
+            source,
+            wiki,
+            ref,
+            tip,
+            source_tip,
+            tip if state["kind"] == "bootstrap" else None,
+            tip if state["kind"] == "reconcile" else None,
+        )
         c.require(actual == state, "prepared bootstrap/publication state changed")
     refreshed = {"checked_day": utc_day().isoformat(), "source_tip": source_tip, "wiki_tip": tip,
                  "receipt_sha256": digest, "links": online}
@@ -895,6 +994,19 @@ def update_checkout(wiki: c.Git, old: dict[str, bytes], new: dict[str, bytes]) -
     return tree
 
 
+def write_output_tree(wiki: c.Git, output: dict[str, bytes]) -> str:
+    rows = bytearray()
+    for name, data in sorted(output.items()):
+        c.require(c.SLUG_RE.fullmatch(name) or name in ("_Sidebar.md", "_Footer.md"),
+                  "invalid managed output name")
+        oid = wiki.run("hash-object", "-w", "--stdin", input=data).decode().strip()
+        c.require(oid == c.blob_id(data), "Git wrote an unexpected output blob")
+        rows.extend(b"100644 blob " + oid.encode("ascii") + b"\t" + name.encode("ascii") + b"\0")
+    tree = wiki.run("mktree", "-z", input=bytes(rows)).decode().strip()
+    c.require(tree == s.tree_record(output)["git_tree"], "Git wrote an unexpected reconciliation tree")
+    return tree
+
+
 def candidate_commit(wiki: c.Git, receipt: dict, tree: str) -> str:
     author = receipt["author"]
     env = {}
@@ -913,6 +1025,9 @@ def publish(root: Path, path: Path, digest: str, *, remote: PublicRemotes | None
     remote, checker = remote or PublicRemotes(), checker or httpcheck.Checker()
     receipt, output, wiki, remote_tip = verify_receipt(root, path, digest, remote, checker)
     expected, ref = receipt["wiki"]["expected_oid"], receipt["wiki"]["branch"]
+    state = receipt["wiki"]["state"]
+    reconciling = state["kind"] == "reconcile"
+    starting = state["published_oid"] if reconciling else expected
     current = wiki.commit("HEAD")
     marker_root, marker_name = transaction_path(wiki), "wiki-transaction.json"
     marker = {"receipt_sha256": digest, "expected": expected, "tree": receipt["output"]["git_tree"]}
@@ -924,7 +1039,7 @@ def publish(root: Path, path: Path, digest: str, *, remote: PublicRemotes | None
     else:
         clean(wiki)
     c.require(wiki.run("symbolic-ref", "-q", "HEAD").decode().strip() == ref, "publication branch changed")
-    if wiki_tree(wiki, remote_tip) == output:
+    if wiki_tree(wiki, remote_tip, managed=not reconciling) == output:
         c.require(current == remote_tip, "remote already has the reviewed output but this clone needs deliberate fast-forward reconciliation")
         clean(wiki)
         check_clone_files(wiki, output)
@@ -933,15 +1048,20 @@ def publish(root: Path, path: Path, digest: str, *, remote: PublicRemotes | None
         return "already-published"
     c.require(remote_tip == expected, "wiki remote drifted")
     if not marker_exists:
-        c.require(current == expected, "publication clone advanced outside this receipt")
+        c.require(current == starting, "publication clone advanced outside this receipt")
         s.write(marker_root, marker_name, marker_data, mode=0o600)
-    old = wiki_tree(wiki, expected)
-    tree = update_checkout(wiki, old, output)
+    if reconciling and current == starting:
+        clean(wiki)
+        check_clone_files(wiki, wiki_tree(wiki, starting))
+    tree = write_output_tree(wiki, output) if reconciling else update_checkout(wiki, wiki_tree(wiki, expected), output)
     candidate = candidate_commit(wiki, receipt, tree)
-    c.require(current in (expected, candidate), "unexpected local publication commit")
-    if current == expected:
-        wiki.run("update-ref", ref, candidate, expected)
+    c.require(current in (starting, candidate), "unexpected local publication commit")
+    if current == starting:
+        wiki.run("update-ref", ref, candidate, starting)
+        if reconciling:
+            wiki.run("read-tree", "--reset", "-u", candidate)
     clean(wiki)
+    check_clone_files(wiki, output)
     # Bind the wiki hook to exactly this invocation; the publisher still checks directly.
     wiki.run("config", "--local", "wiki.receipt", str(path if path.is_absolute() else root / path))
     wiki.run("config", "--local", "wiki.expectReceipt", digest)
