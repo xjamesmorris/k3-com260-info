@@ -9,27 +9,35 @@ rather than a single software project.
 
 ## Documentation and tools
 
-- [Fedora 44 and KVM how-to](k3-com260-fedora-howto/README.md): bootstrap Fedora
-  on NVMe with stock Bianbu/U-Boot, build and install a pinned KVM host kernel,
-  and prepare and run a persistent Fedora guest. Includes helper scripts and
-  the [kernel configuration and 14-patch bundle](k3-com260-fedora-howto/files/kernel/README.md).
+**Start with the [Fedora developer wiki](https://github.com/xjamesmorris/k3-com260-info/wiki).**
+It is the primary entry point for the recorded Fedora/NVMe route, hardware
+setup, maintenance, diagnostics, kernel and device-tree work, virtualization,
+and upstream contribution. The canonical source lives in
+[`wiki/`](wiki/Home.md); its [maintenance tools](tools/wiki/README.md) validate
+the separate GitHub Wiki projection. Editing or pushing this repository does
+not itself publish the wiki.
+
+The focused standalone documents and tools remain available:
+
+- [Fedora 44 and KVM how-to](k3-com260-fedora-howto/README.md): a standalone
+  guide to bootstrapping Fedora on NVMe with stock Bianbu/U-Boot, building and
+  installing a pinned KVM host kernel, and running a persistent Fedora guest.
+  It preserves the recorded bring-up and includes helper scripts and the
+  [kernel configuration and 14-patch bundle](k3-com260-fedora-howto/files/kernel/README.md).
 - [Tools](tools/README.md): currently a Bianbu factory-flashing script using
   stock `fastboot`, with usage, recovery instructions, and recorded results.
 - [Flashing development context](tools/k3-flash-bianbu-HANDOFF.md): protocol
   findings, design decisions, and ideas for further work.
 
-The Fedora guide is retained as the bring-up record. Its directory in this
-repository is `k3-com260-fedora-howto/`; after setting `WORK` in its workstation
-setup, use this path instead of the guide's `docs/k3-fedora-howto` path:
+The Fedora how-to remains the focused bring-up record highlighted by the wiki.
+Its directory in this repository is `k3-com260-fedora-howto/`; after setting
+`WORK` in its workstation setup, use this path instead of the guide's
+`docs/k3-fedora-howto` path:
 
 ```sh
 export HOWTO="$WORK/k3-com260-info/k3-com260-fedora-howto"
 ```
 
-A local [Fedora developer wiki source](wiki/Home.md) organizes my recorded
-Linux/NVMe route, maintenance, diagnostics, and upstream development guidance.
-Its [maintenance tools](tools/wiki/README.md) validate a separate GitHub Wiki
-publication; editing or pushing this repository does not publish the wiki.
 More board notes, scripts, and patches will be added as the work develops.
 
 ## External Resources
