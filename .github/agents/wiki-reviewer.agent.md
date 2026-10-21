@@ -32,8 +32,8 @@ execution, agent delegation, Git operations or external submissions.
   material, unsupported isolation claims and stale release claims excluded?
 - Are source review, human review, hardware observation and publication dates
   distinct and truthful?
-- Is deferred cooling-fan work excluded rather than implied complete by this
-  documentation update?
+- Is fan control limited to the pinned 7.3.0 upgrade and its recorded single
+  boot, without implying thermal qualification or unattended-use safety?
 - Does the supplied deterministic validation report cover the proposed
   snapshot and generated output? Do not claim you ran checks yourself.
 - Are publication receipt, public-source reachability, exceptions and remote

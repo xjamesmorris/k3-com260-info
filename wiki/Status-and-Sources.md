@@ -17,7 +17,9 @@ maintenance host on p1–p3 of the same disk, was performed end to end. The
 recipe's
 [readiness and recorded scope](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#readiness-and-recorded-scope)
 bounds it: creating the partitions, other maintenance hosts and whole-disk
-imaging remain unverified, and no F45 guest workload was tested. No F44
+imaging remain unverified, and no F45 guest workload was tested. On
+October 21 the pinned 7.3.0 fan-control upgrade was installed from 7.2.8
+and booted once. No F44
 installation or shrink step is a prerequisite, and “default” means
 documentation entry points only, not a saved U-Boot change or F44 deletion.
 
@@ -29,7 +31,8 @@ Use the source appropriate to the claim:
    [Fedora 45 recipe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe)
    is the command authority, with its recorded scope and unverified
    alternatives. The [public result record](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
-   identifies the performed October 20 fresh installation and the earlier
+   identifies the performed October 20 fresh installation, the October 21
+   7.3.0 fan-control upgrade and the earlier
    October 19 side-by-side work; the
    [exact lock](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/files/sources.lock.json)
    identifies image/package inputs. The
@@ -79,11 +82,11 @@ flash/boot result; never infer the latter from the former.
 | **Inference / untested idea** | A stated deduction or possible development direction, with its supporting source and open questions. | A working procedure. |
 | **Not recorded / not performed** | The public record lacks that detail / this work has not been done here. | Failure, impossibility, or permission to substitute another test's result. |
 
-## F45 host records, October 19 and 20, 2026
+## F45 host records, October 19–21, 2026
 
 The public results cover the **8 GiB K3-CoM260, Firefly carrier, PCB
 revision unknown**, Linux workstation, NVMe and **Bianbu Minimal K3 v4.0.1
-non-UEFI U-Boot**. In both records F44 stayed on p1–p3 and F45 `/boot` and
+non-UEFI U-Boot**. In all three records F44 stayed on p1–p3 and F45 `/boot` and
 Btrfs root were on p4/p5; the saved F44 boot default was retained. On
 October 20 the public populate helper, run from that F44 system as the
 maintenance host, reformatted p4/p5 for a fresh installation; the
@@ -91,6 +94,7 @@ October 19 bring-up preceded the public helpers.
 
 | Stage | Recorded scope | Boundary |
 | --- | --- | --- |
+| Fan-control upgrade, October 21 | COPR build `11177969`, `7.3.0-65.1.riscv64.omni.fc45.riscv64`: five binary RPMs installed from 7.2.8 with the public helpers' `--build 11177969`. One attended boot with the packaged DTB: seven thermal zones and the `ctf2301` cooling device; fan about 3,840 rpm at idle and 4,890 rpm under a two-minute all-core load (up to 58 °C); `running`, no failed units; a USB 3.0 hub enumerated. | One boot and a short load, not thermal qualification; the partition-table and protected-file comparison was not repeated. Host KVM initialization only. |
 | Fresh volume installation (two existing partitions), October 20 | `populate-f45-volumes.sh`, read-only `--check` first, populated existing p4 (ext4 `/boot`) and p5 (Btrfs root) from the pinned image. One 7.2.7 bootstrap boot (login prompt 24 seconds after `booti`), first serial login as `fedora`, an SSH host key verified against serial, the exact COPR build `11035571` install and three attended 7.2.8 boots: login about 22 seconds after `booti`, startup 22.9–23.5 seconds, `running`, no failed units, no FAT mounts. | The partition table, all 116 F44 `/boot` and `/boot/efi` files and the raw Bianbu UFS ESP were byte-identical afterwards. The maintenance host was F44 on the same NVMe. Fan at full speed; host KVM initialization and `/dev/kvm` only. |
 | F45 bootstrap, October 19 | Non-official community Beta image `Fedora-Server-Host-Omni-45-20260923.2.riscv64.raw.xz`; `7.2.7-300.0.riscv64.omni.fc45.riscv64`. One attended boot reached expected mounts, network/SSH and host KVM initialization. | The separately prepared bootstrap DTB kept both `dldo4` and `hub-reset` enabled. Not an untouched-image boot or independent test of either property. |
 | F45 pinned package update, October 19 | COPR build `11035571`; five binary RPMs for `7.2.8-300.0.riscv64.omni.fc45.riscv64`, installed beside 7.2.7. Three attended pre-fan boots over ten minutes, expected mounts and zero recorded Btrfs device errors, no reported lockup/RCU stall/oops at the checks. | Host initialization and `/dev/kvm` only. No recorded F45 QEMU version, guest launch, CPU workaround, guest networking or persistent shutdown/resume. |
@@ -109,11 +113,11 @@ acquisition took about **7.5 minutes**, and fwupd/udisks2 briefly mounted
 retained NVMe/UFS ESPs read-write before the release-scoped workaround. On
 October 20, with fwupd masked offline before first boot, no FAT filesystem
 was mounted and all four F45 boots had DHCPv4 within about 23–26 seconds,
-but F44 then took about 145 seconds (cause not determined). USB3 probing
-remained deferred; neither kernel exposed SoC thermal zones, and the fan ran
-at full speed. **All cooling-fan work is explicitly deferred**, with no fan
-installation workflow, thermal protection or safe unattended-operation
-assurance. These short host checks are not peripheral, endurance, security
+but F44 then took about 145 seconds (cause not determined). Under 7.2.7 and
+7.2.8, USB3 probing remained deferred, no SoC thermal zones were exposed and
+the fan ran at full speed; the October 21 7.3.0 boot changed all three, but
+also logged new kernel warnings. There is no thermal-protection or safe
+unattended-operation assurance. These short host checks are not peripheral, endurance, security
 or thermal qualification.
 
 ## Archived F44 baseline, September 25, 2026
@@ -145,7 +149,7 @@ keeps its source/configuration limits separate from the later KVM host.
 ## External reference context, last checked September 27, 2026
 
 The following external-source review is retained from **September 27**;
-October 19 and 20 local result reconciliation is not a new check of these
+October 19–21 local result reconciliation is not a new check of these
 sites, current support, releases or contribution policies.
 
 **The F44 archive and selected F45 Beta are community-image records, not
@@ -165,7 +169,7 @@ preparation and dual-property bootstrap workaround.
 The [September 25 Fedora 45 announcement](https://discussion.fedoraproject.org/t/fedora-45-risc-v-non-official-beta-images-are-available/202916)
 explicitly calls those images **non-official, community-contributed Beta**
 artifacts. That label applies to the selected `20260923.2` compose even
-though October 19 and 20 local host results are now recorded. It does not
+though October 19–21 local host results are now recorded. It does not
 become a final/official compose, an official installation route or a
 general Firefly upgrade path. No pin changes merely because a newer
 directory or release exists.
@@ -198,11 +202,11 @@ publication with the human author.
 
 **Applies to:** This wiki's public evidence, especially the 8 GiB K3-CoM260/Firefly, Bianbu Minimal K3 v4.0.1 non-UEFI, Linux-workstation/NVMe Fedora route.
 
-**Evidence:** Public October 20 and October 19 F45 host results and exact lock, preserved September 25 F44 source/patch/configuration/capture record, and separately dated external references last reviewed September 27. Local reconciliation is not a new external-policy or release-status check.
+**Evidence:** Public October 21, 20 and 19 F45 host results and exact lock, preserved September 25 F44 source/patch/configuration/capture record, and separately dated external references last reviewed September 27. Local reconciliation is not a new external-policy or release-status check.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-21.
 
-**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 F45 p4/p5 bootstrap and three attended pre-fan updated-host boots, plus 2026-09-25 archived F44 stages. No F45 guest or new hardware run for this review.
+**Hardware observation:** 2026-10-21 exact COPR 7.3.0 upgrade from 7.2.8 and one attended 7.3.0 boot; 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 F45 p4/p5 bootstrap and three attended pre-fan updated-host boots, plus 2026-09-25 archived F44 stages. No F45 guest or new hardware run for this review.
 
 **Destructive operations:** None on this page. The linked Fedora installation reformats two selected NVMe partitions; factory recovery erases NOR and UFS. References are not authorization to perform either.
 

@@ -14,8 +14,9 @@ archived F44 command authority. Nothing here executes Markdown, shell,
 U-Boot, disk-writing, or guest commands. The fresh-F45 installation into
 two existing NVMe partitions was performed end to end on October 20, 2026;
 partition creation, other maintenance hosts and whole-disk imaging remain
-unverified, and offline checks do not verify them. Cooling-fan work is
-deferred.
+unverified, and offline checks do not verify them. The pinned 7.3.0
+fan-control upgrade was booted once on October 21, 2026; that is not
+thermal qualification.
 
 ## Local setup
 
@@ -334,18 +335,33 @@ pinned SHA256 values before use.
 
 ### Fedora 45 inputs
 
-Schema 2 adds the September 23 F45 Beta Omni image and its explicit `.sha256`
-sidecar, plus the five binary RPMs from COPR build `11035571`. All seven
-requests are mandatory and non-waivable, even if their URLs appear only in
-command fences or helper inputs. The source lock enumerates exact filenames,
-URLs, and SHA256 values, bootstrap and update releases, repository-metadata
-identity, and the explicitly unproven source Git binding. A changed lock
-requires a reviewed validator pin update, not merely editing the manifest.
+Manifest schema 2 adds the September 23 F45 Beta Omni image and its explicit
+`.sha256` sidecar, plus every binary RPM in the public source lock. Lock
+schema 1 pins the five 7.2.8 update RPMs from COPR build `11035571`. Lock
+schema 2 keeps that `kernel` update and its rules unchanged and adds a
+non-empty, ordered `upgrades` list, currently the 7.3.0-65.1 fan-control
+kernel from COPR build `11177969` in
+`@forge-riscv-members/riscv64_omni_mainline_kernel`. With this lock, all
+twelve requests (image, sidecar and ten RPMs) are mandatory and non-waivable,
+even if their URLs appear only in command fences or helper inputs. The source
+lock enumerates exact filenames, URLs, and SHA256 values, bootstrap and update
+releases, repository-metadata identity, and the explicitly unproven source
+Git binding. Each upgrade also names its COPR project from the reviewed
+`F45_COPR_PROJECTS` allowlist (`riscv64_omni_kernel` or
+`riscv64_omni_mainline_kernel`), the earlier pinned releases it must be
+installed from (`requires_running`: the bootstrap, the `kernel` update or an
+earlier upgrade), and its packaged boot DTB path and SHA256. Its five RPM URLs
+must be in that project's own `fedora-45-riscv64/Packages/k/` results; build
+IDs and releases cannot repeat. A changed lock requires a reviewed validator
+pin update, not merely editing the manifest.
 Append approved blobs to `F45_SOURCE_BLOBS`; retain every previously published
-blob and its schema interpretation. The renderer validates each historical
-snapshot against its own declared approved blob, not a single moving current
-pin. This lets a reviewed lock refresh preserve recognition of an earlier
-schema-2 wiki publication as well as schema 1.
+blob and its schema interpretation. The published lock-schema-1 blob
+`9cf08440c1011d8b043d41a51abe1519b0a831b1` stays approved beside the appended
+lock-schema-2 blob `26c33646371c6996c5592127d43c46dee28abf2b`. The renderer
+validates each historical snapshot against its own declared approved blob, not
+a single moving current pin. This lets a reviewed lock refresh preserve
+recognition of an earlier manifest-schema-2 wiki publication as well as
+manifest schema 1.
 
 The recipe must retain the locked image URL/hash. The helpers verify actual
 downloaded RPM bytes against the public lock; the wiki checker performs
@@ -361,12 +377,16 @@ answers with a 301 to Red Hat's Pulp content service
 filename), which answers with a 302 to a short-lived, anonymous S3 link on
 `copr-pulp-prod.s3.amazonaws.com`. That link's query carries the signing fields
 `AWSAccessKeyId`, `Expires` and `Signature`, which the general credential guard
-refuses everywhere else. The checker accepts that one hop only when all of
+refuses everywhere else. Each locked 7.3.0 upgrade RPM in
+`riscv64_omni_mainline_kernel` was observed to follow the same chain through
+its own project's Pulp path. The checker accepts that one hop only when all of
 these hold:
 
-- the link is one of the five locked F45 COPR RPMs, checked as a critical
-  artifact;
-- the first redirect went exactly to the matching Pulp URL;
+- the link is a locked F45 COPR RPM, checked as a critical artifact, at
+  exactly `download.copr.fedorainfracloud.org/results/` + an allowlisted
+  project + `/fedora-45-riscv64/Packages/k/` + its bound `.rpm` filename;
+- the first redirect went exactly to the same filename below that same
+  project's Pulp path; another locked project's Pulp path is refused;
 - the S3 object path is `/artifact/<id>/<2 hex>/<62 hex>` and those 64 hex
   digits are the RPM's pinned SHA-256, so the link names the content-addressed
   pinned bytes;

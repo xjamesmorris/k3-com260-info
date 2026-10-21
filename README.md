@@ -15,7 +15,8 @@ rather than a single software project.
 Its new-reader route is **Fedora 45-first**: a fresh installation of the
 pinned image into **two existing NVMe partitions** from a Linux maintenance
 host, using the public helpers. That route was **performed end to end on
-October 20, 2026**; creating the partitions, other kinds of maintenance host
+October 20, 2026**, and its pinned 7.3.0 fan-control upgrade was booted on
+October 21; creating the partitions, other kinds of maintenance host
 and whole-disk imaging remain unverified. Read the
 [installation orientation](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora)
 and [F45 recipe's recorded scope](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#readiness-and-recorded-scope)
@@ -93,12 +94,14 @@ Afterwards the partition table, all 116 F44 `/boot` and `/boot/efi` files
 and the raw Bianbu UFS ESP were byte-identical to the before-state. The
 earlier **October 19** side-by-side bring-up on the same partitions, made
 before the public helpers existed, remains recorded. There is no F45 QEMU,
-guest, or persistence result.
+guest, or persistence result. On **October 21** the pinned 7.3.0 upgrade
+(COPR build `11177969`, `7.3.0-65.1.riscv64.omni.fc45.riscv64`) was
+installed from 7.2.8 and booted once, with the kernel controlling the fan.
 
 Creating the partitions, other maintenance hosts and whole-disk imaging
 (the image's own p2/p3 layout) have **not** been performed. The fan runs at
-full speed under the pinned kernels: cooling-fan work is explicitly
-deferred, thermal limits remain, and no unattended-operation assurance is
+full speed under 7.2.7 and 7.2.8; the 7.3.0 upgrade adds kernel fan
+control. Thermal limits remain, and no unattended-operation assurance is
 made.
 
 The archived F44 how-to records a **September 25, 2026 snapshot**. Its

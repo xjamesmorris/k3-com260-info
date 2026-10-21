@@ -26,15 +26,18 @@ Each record has one bootstrap boot and three attended updated-host boots;
 `/dev/kvm` and host KVM initialization were observed. The October 19
 updated-host banner reported RVH, Sv39x4 G-stage, 14-bit VMIDs and AIA with
 seven guest external interrupts; the October 20 record notes the hypervisor
-extension, Sv39x4 G-stage paging and 14-bit VMIDs.
+extension, Sv39x4 G-stage paging and 14-bit VMIDs. On October 21 the
+pinned 7.3.0 upgrade (COPR build `11177969`) booted once with the same KVM
+banner.
 
 **Not recorded on F45:** QEMU version, guest launch, CPU filter, guest
 interrupt mode, vCPUs/RAM, workload, guest network, or persistent
 shutdown/resume. Do not apply the archived CPU workaround or copy its checks
 into the F45 row. The October 20 fresh installation into existing p4/p5
 partitions validates the host installation route, not a guest workload.
-Thermal/fan limits remain: the fan runs at full speed under the pinned
-kernels, and all cooling-fan work is deferred.
+Under 7.2.x the fan runs at full speed; 7.3.0 adds kernel fan control, but
+there is no sustained-load thermal qualification, which matters for long
+guest workloads.
 
 ## Keep the three stages separate
 
@@ -92,7 +95,7 @@ path, clean shutdown/resume, or the AIA alternative.
 
 | Result | Host kernel | QEMU package | Guest type and kernel | CPU model/filter | PLIC/AIA setting | vCPUs / RAM | Storage and persistence checks | Network checks | Public source | Nonclaims and unknowns |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F45 host initialization only | `7.2.8-300.0.riscv64.omni.fc45.riscv64`, COPR build `11035571`; 7.2.7 bootstrap recorded separately | Not recorded | Not tested / not recorded | Not recorded | Host AIA initialization observed; guest PLIC/AIA setting not recorded | Not recorded | No guest storage or persistence tests recorded. | No guest network tests recorded. | [F45 host results](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md) and [exact pins](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/files/sources.lock.json) | `/dev/kvm` and host initialization only; no QEMU launch, guest workload, CPU-filter validation, guest isolation or persistence claim. |
+| F45 host initialization only | `7.2.8-300.0.riscv64.omni.fc45.riscv64`, COPR build `11035571`, and `7.3.0-65.1.riscv64.omni.fc45.riscv64`, COPR build `11177969`; 7.2.7 bootstrap recorded separately | Not recorded | Not tested / not recorded | Not recorded | Host AIA initialization observed; guest PLIC/AIA setting not recorded | Not recorded | No guest storage or persistence tests recorded. | No guest network tests recorded. | [F45 host results](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md) and [exact pins](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/files/sources.lock.json) | `/dev/kvm` and host initialization only; no QEMU launch, guest workload, CPU-filter validation, guest isolation or persistence claim. |
 | Full Fedora, recorded PLIC path | `7.3.0-rc4-k3-kvm-host-a1`, pinned source plus 14 patches | Fedora `10.2.2-1.fc44` | Fedora 44 Cloud; `6.19.8-200.0.riscv64.fc43.riscv64` | `host,svpbmt=false,zicbom=false,zicbop=false,zicboz=false` | `plic`; QEMU `virt` | 4 / 4 GiB | The captures show virtio disks and the Btrfs root mounted from the 20 GiB guest disk. The recipe records persistent `overlay.qcow2` backed by `base.img` and clean shutdown/resume. | The captures show `eth0` up with a guest address and an SSH terminal. The recipe records QEMU user networking, guest SSH through K3 loopback port 2222, the workstation tunnel, and guest package installation. | [Guest captures](https://github.com/xjamesmorris/k3-com260-info/tree/57400da095e944c75e63154b1c187e18a3ac3359/files/f44-kvm-guest-01) and [recorded procedure/result scope](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md#prepare-and-run-the-persistent-guest) | The captures do not show the host launch command/package, overlay backing check, forwarding/tunnel path, package-install transcript, clean shutdown/resume, disk-integrity or throughput tests, restart count, or stress duration. |
 | Full Fedora, tested AIA alternative | `7.3.0-rc4-k3-kvm-host-a1`, pinned source plus 14 patches | Fedora `10.2.2-1.fc44` | Fedora 44 Cloud; `6.19.8-200.0.riscv64.fc43.riscv64` | `host,svpbmt=false,zicbom=false,zicbop=false,zicboz=false` | `aplic-imsic`; QEMU `virt,aia=aplic-imsic` | 4 / 4 GiB | Same persistent disk, resumed after PLIC shutdown. Separate AIA-mode storage and persistence check outputs are not recorded. | Same networking configuration; separate AIA-mode network check outputs are not recorded. | [Public statement that AIA is the tested alternative](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md#prepare-and-run-the-persistent-guest) | The public statement does not supply an independent per-mode validation matrix. Do not transfer every PLIC check into this row as a measured AIA result. |
 
@@ -169,11 +172,11 @@ not an improvised launch recipe.
 
 **Applies to:** 8 GiB K3-CoM260 on the recorded Firefly carrier, PCB revision unknown, Bianbu Minimal K3 v4.0.1 non-UEFI firmware and NVMe; F45 host-only initialization and the separately pinned historical F44 guest stack.
 
-**Evidence:** Public October 20 and October 19 F45 host results/pins and preserved September 25 F44 PLIC/AIA result coverage and captures. QEMU/KVM references retain their September 27 source review and explain concepts, not new tests.
+**Evidence:** Public October 21, 20 and 19 F45 host results/pins and preserved September 25 F44 PLIC/AIA result coverage and captures. QEMU/KVM references retain their September 27 source review and explain concepts, not new tests.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-21.
 
-**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots, with KVM host initialization only; 2026-10-19 F45 bootstrap/three pre-fan updated-host boots without guest testing; 2026-09-25 archived F44 guest snapshot. No F45 guest workload was tested.
+**Hardware observation:** 2026-10-21 one attended 7.3.0 fan-control boot with KVM host initialization only; 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots, with KVM host initialization only; 2026-10-19 F45 bootstrap/three pre-fan updated-host boots without guest testing; 2026-09-25 archived F44 guest snapshot. No F45 guest workload was tested.
 
 **Destructive operations:** None on this page. The linked installation recipe reformats two selected NVMe partitions; guest operation writes a persistent guest disk. Forced termination can lose guest writes.
 

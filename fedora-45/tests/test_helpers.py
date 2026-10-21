@@ -18,6 +18,8 @@ import unittest
 
 
 SUPPORT = Path(__file__).resolve().parents[1]
+FIRST_BUILD = 11035571
+UPGRADE_BUILD = 11177969
 MOCK = textwrap.dedent(r"""\
 #!/usr/bin/env python3
 import json
@@ -36,7 +38,13 @@ with open(os.environ["F45_TEST_LOG"], "a", encoding="utf-8") as stream:
     stream.write(json.dumps(record) + "\n")
 
 lock = json.loads(Path(os.environ["F45_TEST_LOCK"]).read_text())
-packages = lock["kernel"]["packages"]
+updates = [lock["kernel"], *lock.get("upgrades", [])]
+packages = [package for update in updates for package in update["packages"]]
+# VERSION and RELEASE as real rpm reports them for each pinned kernel release.
+HEADERS = {
+    "7.2.8-300.0.riscv64.omni.fc45.riscv64": ("7.2.8", "300.0.riscv64.omni.fc45"),
+    "7.3.0-65.1.riscv64.omni.fc45.riscv64": ("7.3.0", "65.1.riscv64.omni.fc45"),
+}
 if command == "curl":
     matches = [p for p in packages if p["url"] == args[-1]]
     if len(matches) != 1:
@@ -48,12 +56,20 @@ if command == "curl":
     Path(args[args.index("--output") + 1]).write_bytes(data)
 elif command == "rpm":
     if "-qp" in args:
-        package = next(p for p in packages if p["filename"] == Path(args[-1]).name)
+        update, package = next(
+            (update, package) for update in updates
+            for package in update["packages"]
+            if package["filename"] == Path(args[-1]).name
+        )
         name = package["name"]
         if os.environ.get("F45_TEST_WRONG_METADATA"):
             name = "unrelated-package"
-        print("\t".join((name, "0", "7.2.8", "300.0.riscv64.omni.fc45",
-                         "riscv64", lock["kernel"]["source_rpm"])))
+        if os.environ.get("F45_TEST_HEADER_OF"):
+            update = next(u for u in updates
+                          if u["build_id"] == int(os.environ["F45_TEST_HEADER_OF"]))
+        version, release = HEADERS[update["kernel_release"]]
+        print("\t".join((name, "0", version, release, "riscv64",
+                         update["source_rpm"])))
     elif "-q" in args and "--quiet" in args:
         if os.environ.get("F45_TEST_RPM_DB_ERROR"):
             sys.exit(2)
@@ -119,13 +135,12 @@ class Helpers(unittest.TestCase):
         self.lock = json.loads((SUPPORT / "files" / "sources.lock.json").read_text())
         self.artifacts = self.work / "download fixtures"
         self.artifacts.mkdir()
-        self.bundle = self.work / "rpms"
-        self.bundle.mkdir()
-        for package in self.lock["kernel"]["packages"]:
-            data = ("offline binary fixture: " + package["name"]).encode()
-            package["sha256"] = hashlib.sha256(data).hexdigest()
-            (self.artifacts / package["filename"]).write_bytes(data)
-            (self.bundle / package["filename"]).write_bytes(data)
+        for update in self.updates():
+            for package in update["packages"]:
+                data = ("offline binary fixture: " + package["filename"]).encode()
+                package["sha256"] = hashlib.sha256(data).hexdigest()
+                (self.artifacts / package["filename"]).write_bytes(data)
+        self.bundle = self.make_bundle(FIRST_BUILD, "rpms")
         self.write_lock()
         self.bin = self.work / "mock commands"
         self.bin.mkdir()
@@ -157,6 +172,20 @@ class Helpers(unittest.TestCase):
 
     def write_lock(self):
         self.lock_path.write_text(json.dumps(self.lock, indent=2) + "\n")
+
+    def updates(self):
+        return [self.lock["kernel"], *self.lock["upgrades"]]
+
+    def update(self, build):
+        return next(item for item in self.updates() if item["build_id"] == build)
+
+    def make_bundle(self, build, name=None):
+        bundle = self.work / (name or f"rpms {build}")
+        bundle.mkdir()
+        for package in self.update(build)["packages"]:
+            shutil.copyfile(self.artifacts / package["filename"],
+                            bundle / package["filename"])
+        return bundle
 
     def run_helper(self, name, *args, extra_env=None):
         command = [str(self.support / "scripts" / name), *map(str, args)]
@@ -301,9 +330,9 @@ class Helpers(unittest.TestCase):
                 self.assert_preflight_refusal(self.installer(), "error:")
 
     def test_installer_rejects_duplicate_lock_keys(self):
-        data = self.lock_path.read_text().replace(
-            '"schema": 1,', '"schema": 1, "schema": 1,', 1
-        )
+        original = self.lock_path.read_text()
+        data = original.replace('"schema": 2,', '"schema": 2, "schema": 2,', 1)
+        self.assertNotEqual(data, original)
         self.lock_path.write_text(data)
         self.assert_preflight_refusal(self.installer(), "Duplicate JSON key")
 
@@ -435,6 +464,193 @@ class Helpers(unittest.TestCase):
         calls = self.commands()
         self.assertEqual(sum(c["command"] == "ssh" for c in calls), 1)
         self.assertFalse(any(c["command"] == "rsync" for c in calls))
+
+    # Build selection: 7.2.8 first update (default) and the 7.3 upgrade.
+    def verifier(self, *args, **env):
+        return self.run_helper("verify-f45-bundle.py", *args, extra_env=env)
+
+    def assert_no_rpm_database_query(self):
+        self.assertFalse([c for c in self.commands()
+                          if c["command"] == "rpm" and "-qp" not in c["args"]])
+
+    def test_fetch_selected_build_downloads_only_its_five_urls(self):
+        output = self.work / "fetched upgrade"
+        result = self.run_helper("fetch-f45-copr-kernel.sh", "--build",
+                                 UPGRADE_BUILD, output)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        packages = self.update(UPGRADE_BUILD)["packages"]
+        self.assertEqual({p.name for p in output.iterdir()},
+                         {p["filename"] for p in packages})
+        curls = [c["args"][-1] for c in self.commands() if c["command"] == "curl"]
+        self.assertEqual(curls, [p["url"] for p in packages])
+
+    def test_verify_binds_a_bundle_to_the_selected_build(self):
+        upgrade = self.make_bundle(UPGRADE_BUILD)
+        result = self.verifier("--build", UPGRADE_BUILD, "verify", upgrade)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        first_core = self.update(FIRST_BUILD)["packages"][1]["filename"]
+        upgrade_core = self.update(UPGRADE_BUILD)["packages"][1]["filename"]
+        upgrade_and_first = self.make_bundle(UPGRADE_BUILD, "upgrade plus first")
+        shutil.copyfile(self.artifacts / first_core, upgrade_and_first / first_core)
+        first_and_upgrade = self.make_bundle(FIRST_BUILD, "first with upgrade")
+        (first_and_upgrade / first_core).unlink()
+        shutil.copyfile(self.artifacts / upgrade_core,
+                        first_and_upgrade / upgrade_core)
+        cases = (
+            (("--build", UPGRADE_BUILD, "verify", upgrade_and_first), {},
+             "missing or extra"),
+            (("verify", first_and_upgrade), {}, "missing or extra"),
+            (("verify", upgrade), {}, "missing or extra"),
+            (("--build", UPGRADE_BUILD, "check-rpm", self.bundle / first_core), {},
+             "not pinned for COPR build"),
+            (("--build", UPGRADE_BUILD, "verify", upgrade),
+             {"F45_TEST_HEADER_OF": str(FIRST_BUILD)}, "Unexpected RPM metadata"),
+        )
+        for args, env, diagnostic in cases:
+            with self.subTest(args=args[:-1], env=env):
+                result = self.verifier(*args, **env)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(diagnostic, result.stderr)
+
+    def test_build_queries_report_each_pinned_update(self):
+        upgrade = self.update(UPGRADE_BUILD)
+        upgrade["boot_dtb"]["sha256"] = hashlib.sha256(b"fixture DTB").hexdigest()
+        self.write_lock()
+        cases = (
+            (("builds",), "".join(f"{u['build_id']}\t{u['kernel_release']}\n"
+                                  for u in self.updates())),
+            (("requires-running",), self.lock["image"]["kernel_release"] + "\n"),
+            (("--build", UPGRADE_BUILD, "requires-running"),
+             self.lock["kernel"]["kernel_release"] + "\n"),
+            (("boot-dtb",), "bootstrap\n"),
+            (("--build", UPGRADE_BUILD, "boot-dtb"), "packaged\t{path}\t{sha256}\n"
+             .format(**upgrade["boot_dtb"])),
+        )
+        for args, expected in cases:
+            with self.subTest(args=args):
+                result = self.verifier(*args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, expected)
+
+    def test_unknown_or_malformed_build_is_refused(self):
+        output = self.work / "fetched rpms"
+        target = "fedora@k3.example.org"
+        cases = (
+            ("verify-f45-bundle.py", ("--build", "12345", "plan"), "not pinned"),
+            ("verify-f45-bundle.py", ("--build", "011035571", "plan"),
+             "decimal COPR build ID"),
+            ("fetch-f45-copr-kernel.sh", ("--build", "12345", output), "not pinned"),
+            ("transfer-f45-copr-kernel-to-k3.sh",
+             ("--build", "12345", self.bundle, target), "not pinned"),
+            ("transfer-f45-copr-kernel-to-k3.sh",
+             ("--build", "1/../x", self.bundle, target), "decimal COPR build ID"),
+            ("k3-install-rpm-kernel.sh", ("--build", "12345", self.bundle),
+             "not pinned"),
+            ("k3-install-rpm-kernel.sh", ("--build", "", self.bundle),
+             "decimal COPR build ID"),
+        )
+        for name, args, diagnostic in cases:
+            with self.subTest(name=name, build=args[1]):
+                result = self.run_helper(name, *args)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(diagnostic, result.stderr)
+        self.assertFalse(self.commands())
+        self.assertFalse(output.exists() or Path(str(output) + ".partial").exists())
+        self.assertEqual(list(self.remote_home.iterdir()), [])
+
+    def test_upgrade_installer_requires_running_the_first_update(self):
+        bundle = self.make_bundle(UPGRADE_BUILD)
+        required = self.update(UPGRADE_BUILD)["requires_running"][0]
+        for running in (self.lock["image"]["kernel_release"],
+                        "6.18.3-200.fc45.riscv64"):
+            with self.subTest(running=running):
+                result = self.run_helper(
+                    "k3-install-rpm-kernel.sh", "--build", UPGRADE_BUILD, bundle,
+                    extra_env={"F45_TEST_RUNNING": running},
+                )
+                self.assert_preflight_refusal(
+                    result, "requires running the pinned F45 kernel " + required)
+                self.assert_no_rpm_database_query()
+
+    @unittest.skipIf(os.geteuid() == 0, "root continues past the privilege check")
+    def test_upgrade_installer_preflight_accepts_running_first_update(self):
+        upgrade = self.update(UPGRADE_BUILD)
+        result = self.run_helper(
+            "k3-install-rpm-kernel.sh", "--build", UPGRADE_BUILD,
+            self.make_bundle(UPGRADE_BUILD),
+            extra_env={"F45_TEST_RUNNING": upgrade["requires_running"][0]},
+        )
+        self.assert_preflight_refusal(result, "Run this script with sudo")
+        queried = [c["args"][-1] for c in self.commands()
+                   if c["command"] == "rpm" and "--quiet" in c["args"]]
+        self.assertEqual(queried, [p["name"] + "-" + upgrade["kernel_release"]
+                                   for p in upgrade["packages"]])
+
+    def test_default_installer_still_requires_the_image_bootstrap(self):
+        result = self.installer(
+            F45_TEST_RUNNING=self.update(UPGRADE_BUILD)["kernel_release"])
+        self.assert_preflight_refusal(
+            result, "pinned F45 bootstrap " + self.lock["image"]["kernel_release"])
+        self.assert_no_rpm_database_query()
+
+    def test_transfer_selected_build_uses_its_own_remote_directory(self):
+        result = self.run_helper(
+            "transfer-f45-copr-kernel-to-k3.sh", "--build", UPGRADE_BUILD,
+            self.make_bundle(UPGRADE_BUILD), "fedora@k3.example.org",
+        )
+        # Success includes the remote re-verification, which fails for these
+        # RPMs unless it also selects the upgrade build.
+        self.assertEqual(result.returncode, 0, result.stderr)
+        destination = self.remote_home / f"f45-copr-kernel-{UPGRADE_BUILD}"
+        self.assertEqual(list(self.remote_home.iterdir()), [destination])
+        self.assertEqual(
+            {p.name for p in (destination / "rpms").iterdir()},
+            {p["filename"] for p in self.update(UPGRADE_BUILD)["packages"]},
+        )
+        self.assertIn(
+            f'  sudo "$HOME/{destination.name}/scripts/k3-install-rpm-kernel.sh" \\\n'
+            f'    --build {UPGRADE_BUILD} "$HOME/{destination.name}/rpms"\n',
+            result.stdout,
+        )
+
+    def test_lock_with_altered_upgrade_identity_is_refused(self):
+        original = copy.deepcopy(self.lock)
+        first_url = original["kernel"]["packages"][0]["url"]
+        changes = (
+            ("upgrade identity", lambda lock, up: up.update(
+                copr_project="@forge-riscv-members/riscv64_omni_kernel")),
+            ("package identity", lambda lock, up: up["packages"][0].update(
+                url=first_url.rsplit("/", 1)[0] + "/" + up["packages"][0]["filename"])),
+            ("Invalid SHA-256", lambda lock, up: up["boot_dtb"].update(
+                sha256=up["boot_dtb"]["sha256"].upper())),
+            ("boot DTB path", lambda lock, up: up["boot_dtb"].update(
+                path="spacemit/k3-com260-bootstrap.dtb")),
+            ("upgrade identity", lambda lock, up: up.update(
+                requires_running=[lock["image"]["kernel_release"]])),
+            ("upgrade identity", lambda lock, up: up.update(
+                requires_running=up["requires_running"][0])),
+            ("upgrade identity", lambda lock, up: up.update(
+                build_id=str(up["build_id"]))),
+            ("upgrade identity", lambda lock, up: up.update(
+                source_git_commit="0" * 40)),
+            ("one pinned upgrade", lambda lock, up: lock.update(upgrades=[])),
+            ("one pinned upgrade", lambda lock, up: lock["upgrades"].append(
+                copy.deepcopy(up))),
+            ("top-level keys", lambda lock, up: (lock.pop("upgrades"), lock.update(
+                schema=1, recorded_on="2026-10-19"))),
+        )
+        bundles = {FIRST_BUILD: self.bundle,
+                   UPGRADE_BUILD: self.make_bundle(UPGRADE_BUILD)}
+        for index, (diagnostic, change) in enumerate(changes):
+            self.lock = copy.deepcopy(original)
+            change(self.lock, self.lock["upgrades"][0])
+            self.write_lock()
+            for build, bundle in bundles.items():
+                with self.subTest(index=index, build=build):
+                    result = self.run_helper("k3-install-rpm-kernel.sh",
+                                             "--build", build, bundle)
+                    self.assert_preflight_refusal(result, diagnostic)
+        self.assert_no_rpm_database_query()
 
     @staticmethod
     def raw_image():

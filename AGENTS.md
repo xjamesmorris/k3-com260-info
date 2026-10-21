@@ -71,7 +71,9 @@ routes (partition creation, other maintenance hosts, whole-disk imaging) must
 remain visibly unverified until an attended result is recorded. Host KVM
 initialization is not an F45 guest result. Do not turn other
 platforms, newer images, or unperformed experiments into tested walkthroughs.
-Cooling-fan work is deferred and is not part of the F45 documentation update.
+Fan control is documented only through the pinned 7.3.0 upgrade (COPR
+build 11177969) and its recorded single boot; do not add userspace fan
+daemons, private fan builds or unpinned kernels.
 
 Validate the exact proposed snapshot before a push. Content-repository and
 wiki pushes are separate human-authorized actions; never enable the wiki,

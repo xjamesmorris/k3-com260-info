@@ -10,9 +10,11 @@ grubby, release-upgrade, or automatic rollback procedure.
 **Installing a kernel does not select it for this direct-boot route.** The
 [recorded F45 changes](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
 installed 7.2.8 beside 7.2.7 on p4/p5, most recently after the October 20
-fresh installation, then used temporary U-Boot selections. Use the
-[F45 package-update section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#install-the-pinned-kernel-update)
-and [updated-host boot checks](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#boot-and-check-the-updated-host)
+fresh installation, and on October 21 the 7.3.0 fan-control upgrade beside
+both; each was then selected temporarily at U-Boot. Use the
+[F45 package-update section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#install-the-pinned-kernel-update),
+[updated-host boot checks](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#boot-and-check-the-updated-host)
+and [7.3.0 upgrade](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#upgrade-to-73-with-fan-control)
 for commands, not this orientation page.
 
 ## Running, installed, and selected are different
@@ -34,7 +36,9 @@ at 7.2.7 even when 7.2.8 was selected manually.
 
 The F45 bootstrap is **`7.2.7-300.0.riscv64.omni.fc45.riscv64`**, from
 Beta compose `20260923.2`. The updated release is
-**`7.2.8-300.0.riscv64.omni.fc45.riscv64`**, COPR build **`11035571`**.
+**`7.2.8-300.0.riscv64.omni.fc45.riscv64`**, COPR build **`11035571`**, and
+the fan-control upgrade is **`7.3.0-65.1.riscv64.omni.fc45.riscv64`**, COPR
+build **`11177969`**.
 Keep the [exact public lock](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/files/sources.lock.json)
 with the helpers; similar names or a newer repository candidate are not
 equivalent inputs.
@@ -53,11 +57,18 @@ Preserve the actual Image/DTB/initramfs hashes and load sizes for each
 boot. Do not claim an edited/recompiled DTB is byte-identical to its
 packaged input, or extend the exact-version comparison to future releases.
 
+**7.3.0 differs:** it boots its packaged `k3-com260-ifx.dtb`, which carries
+the thermal zones and fan cooling map and which the installer checks
+against the lock's SHA-256; no bootstrap DTB is created. Do not pair the
+7.3.0 kernel with a 7.2.x DTB, or a 7.2.x kernel with the 7.3.0 DTB.
+
 ## The exercised maintenance sequence
 
 The transition was performed on the recorded p4/p5 system twice: on
 October 19, before the public helpers existed, and on October 20 with the
 public fetch, transfer and installer helpers after the fresh installation.
+On October 21 the same helpers, with `--build 11177969`, upgraded that
+7.2.8 host to 7.3.0.
 
 **Verify and transfer the locked binary packages.** The
 [bundle inventory](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/README.md)
@@ -76,6 +87,7 @@ changes: stop and inspect them rather than deleting paths to defeat guards.
 The installer also creates the separately named 7.2.8 bootstrap DTB, copied
 only when the packaged 7.2.7 and 7.2.8 DTBs are byte-identical and otherwise
 generated; if neither is possible, it stops after installing and says so.
+For 7.3.0 it instead checks the packaged DTB and creates none.
 Review its DTB line and load sizes before any boot.
 
 **Select the candidate at an attended reset.** Keep serial and physical
@@ -94,7 +106,8 @@ intended root and `/boot`, storage errors, kernel messages and network/SSH
 over the recipe's attended interval. The three October 20 7.2.8 boots had
 DHCPv4 within about 23 seconds, but one October 19 boot took about
 7.5 minutes. These attended boots do not establish prompt networking on
-every boot, endurance, or thermal safety.
+every boot, endurance, or thermal safety. The October 21 7.3.0 boot also
+showed seven thermal zones and kernel fan control.
 Host KVM initialization and `/dev/kvm` were recorded; no F45 QEMU, guest or
 persistence result follows from them.
 
@@ -105,9 +118,10 @@ initramfs/modules, and their identities. If a candidate fails, the retained
 bootstrap's
 [temporary boot selection](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#boot-the-bootstrap-fedora-host)
 is the fallback described by the recipe when those files and the intended
-NVMe root are intact. Both F45 records retained the same-disk F44
+NVMe root are intact. Keep 7.2.8's boot set as the fallback for 7.3.0.
+Both F45 records retained the same-disk F44
 installation and its saved boot default; no recorded boot returned to 7.2.7
-after the update. On October 20, a reboot without interrupting autoboot
+after the update, or to 7.2.8 after the 7.3.0 upgrade. On October 20, a reboot without interrupting autoboot
 returned to F44, and the partition table, F44 boot files and UFS ESP were
 byte-identical to the before-state; see
 [Return to the saved default](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#return-to-the-saved-default).
@@ -140,9 +154,9 @@ read-write ESP mounts on this non-UEFI host on October 19; the populate
 helper's tested `mask` choice now writes the masks before first boot. Use
 the recipe's reversible, release-scoped explanation; do not generalize it
 into a firmware-updater policy or assurance that other disks are isolated.
-Cooling-fan work remains deferred: the fan runs at full speed, neither
-kernel exposed SoC thermal zones, and there is no unattended-operation or
-thermal-protection assurance.
+Under 7.2.x the fan runs at full speed and no SoC thermal zones are
+exposed; the 7.3.0 upgrade adds kernel fan control, but there is still no
+unattended-operation or thermal-protection assurance.
 
 ## Historical F44 maintenance reference
 
@@ -168,11 +182,11 @@ F45 two-property bootstrap preparation.
 
 **Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot, and the recorded Fedora 45 NVMe package route; F44 source-built maintenance is historical. `k3-com260-ifx` is a DT filename, not proof of the carrier PCB revision.
 
-**Evidence:** Recorded public October 20 and October 19 F45 results, pins and helper interfaces; preserved September 25 F44 sources. External U-Boot semantics retain their September 27 review, not a new release or firmware check.
+**Evidence:** Recorded public October 21, 20 and 19 F45 results, pins and helper interfaces; preserved September 25 F44 sources. External U-Boot semantics retain their September 27 review, not a new release or firmware check.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-21.
 
-**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 side-by-side F45 bootstrap and three attended pre-fan 7.2.8 boots; 2026-09-25 archived F44 setup. No F45 guest test here.
+**Hardware observation:** 2026-10-21 exact COPR 7.3.0 upgrade from 7.2.8 and one attended 7.3.0 boot; 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 side-by-side F45 bootstrap and three attended pre-fan 7.2.8 boots; 2026-09-25 archived F44 setup. No F45 guest test here.
 
 **Destructive operations:** The linked F45 installer changes the RPM database, `/boot` and modules; boot checks require attended resets. Repopulating the F45 partitions destroys their contents; factory recovery rewrites NOR and all UFS contents. Neither is a routine update step.
 

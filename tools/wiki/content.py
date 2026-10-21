@@ -32,14 +32,19 @@ CRITICAL_SOURCES = {
 }
 F45_RECIPE = "Fedora-45-Recipe.md"
 F45_SOURCES = "fedora-45/files/sources.lock.json"
-F45_SOURCE_BLOBS = frozenset({"9cf08440c1011d8b043d41a51abe1519b0a831b1"})
+F45_SOURCE_BLOBS = frozenset({
+    "9cf08440c1011d8b043d41a51abe1519b0a831b1",  # lock schema 1, published
+    "26c33646371c6996c5592127d43c46dee28abf2b",  # lock schema 2: pinned upgrades
+})
 F45_PACKAGES = ("kernel", "kernel-core", "kernel-modules-core",
                 "kernel-modules", "kernel-modules-extra")
-F45_COPR_PACKAGES = ("https://download.copr.fedorainfracloud.org/results/"
-                     "@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/")
+F45_COPR_RESULTS = "https://download.copr.fedorainfracloud.org/results/"
 # COPR serves those URLs through Red Hat's Pulp content service; see httpcheck.
-F45_PULP_PACKAGES = ("https://packages.redhat.com/api/pulp-content/public-copr/"
-                     "@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/")
+F45_PULP_CONTENT = "https://packages.redhat.com/api/pulp-content/public-copr/"
+# The lock's `kernel` entry has no project field; upgrades name an allowlisted one.
+F45_KERNEL_PROJECT = "@forge-riscv-members/riscv64_omni_kernel"
+F45_COPR_PROJECTS = frozenset({F45_KERNEL_PROJECT,
+                               "@forge-riscv-members/riscv64_omni_mainline_kernel"})
 MANIFEST = "tools/wiki/manifest.json"
 EXCEPTIONS = "tools/wiki/link-exceptions.json"
 LOCK = "tools/wiki/requirements.txt"
@@ -516,6 +521,71 @@ def critical_artifacts(snapshot: Snapshot, entries: Any) -> None:
             require(source.count(entry["checksum_url"]) == 1, "guest checksum metadata source changed")
 
 
+def f45_package_url(base: str, project: str, filename: str) -> str:
+    """A locked F45 binary RPM below one COPR project's results or Pulp content path."""
+    return base + project + "/fedora-45-riscv64/Packages/k/" + filename
+
+
+def f45_release(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(
+        r"\d+\.\d+\.\d+-[A-Za-z0-9._+-]+\.omni\.fc45\.riscv64", value) is not None
+
+
+def f45_update(update: dict[str, Any], project: str) -> None:
+    """One pinned COPR build of the five F45 kernel RPMs; artifact hashes are checked later."""
+    require(f45_release(update["kernel_release"]), "invalid Fedora 45 Omni kernel release")
+    release = update["kernel_release"]
+    require(type(update["build_id"]) is int and update["build_id"] > 0
+            and update["source_rpm"] == "kernel-" + release.removesuffix(".riscv64") + ".src.rpm"
+            and update["source_git_commit"] is None,
+            "Fedora 45 COPR build identity or unproven source binding changed")
+    require(isinstance(update["primary_metadata_sha256"], str)
+            and re.fullmatch(r"[0-9a-f]{64}", update["primary_metadata_sha256"]),
+            "invalid Fedora 45 repository metadata identity")
+    packages = update["packages"]
+    require(isinstance(packages, list) and len(packages) == len(F45_PACKAGES),
+            "Fedora 45 must enumerate all five recorded binary RPMs")
+    for package, name in zip(packages, F45_PACKAGES):
+        object_keys(package, {"name", "filename", "url", "sha256"})
+        require(package["name"] == name
+                and package["filename"] == name + "-" + release + ".rpm"
+                and package["url"] == f45_package_url(F45_COPR_RESULTS, project, package["filename"]),
+                "Fedora 45 RPM inventory or origin changed")
+
+
+def f45_upgrades(upgrades: Any, image: dict[str, Any], kernel: dict[str, Any]) -> list[dict[str, str]]:
+    """Lock schema 2: ordered later builds, each installed from an earlier pinned kernel."""
+    require(isinstance(upgrades, list) and upgrades,
+            "Fedora 45 lock schema 2 needs a non-empty upgrades list")
+    builds = {kernel["build_id"]}
+    releases = [image["kernel_release"], kernel["kernel_release"]]
+    packages = []
+    for upgrade in upgrades:
+        object_keys(upgrade, {"build_id", "copr_project", "kernel_release", "source_rpm",
+                              "source_git_commit", "primary_metadata_sha256",
+                              "requires_running", "boot_dtb", "packages"})
+        project = upgrade["copr_project"]
+        require(isinstance(project, str) and project in F45_COPR_PROJECTS,
+                "Fedora 45 upgrade uses an unreviewed COPR project")
+        f45_update(upgrade, project)
+        require(upgrade["build_id"] not in builds and upgrade["kernel_release"] not in releases,
+                "Fedora 45 upgrade repeats a pinned COPR build or kernel release")
+        running = upgrade["requires_running"]
+        require(isinstance(running, list) and running
+                and all(isinstance(release, str) and release in releases for release in running)
+                and len(set(running)) == len(running),
+                "Fedora 45 upgrade must require earlier pinned running kernels")
+        dtb = upgrade["boot_dtb"]
+        object_keys(dtb, {"path", "sha256"})
+        require(PurePosixPath(safe_path(dtb["path"])).suffix == ".dtb"
+                and isinstance(dtb["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", dtb["sha256"]),
+                "invalid Fedora 45 upgrade boot DTB")
+        builds.add(upgrade["build_id"])
+        releases.append(upgrade["kernel_release"])
+        packages.extend(upgrade["packages"])
+    return packages
+
+
 def fedora45_artifacts(snapshot: Snapshot, declaration: Any) -> list[dict[str, str]]:
     object_keys(declaration, {"source", "recipe"})
     object_keys(declaration["source"], {"path", "blob"})
@@ -527,9 +597,10 @@ def fedora45_artifacts(snapshot: Snapshot, declaration: Any) -> list[dict[str, s
     data = snapshot.read(F45_SOURCES, page=True)
     require(blob_id(data) == pin, "Fedora 45 source lock changed; review its new pins")
     source = load_json(data, "Fedora 45 sources")
-    object_keys(source, {"schema", "recorded_on", "image", "kernel"})
-    require(type(source["schema"]) is int and source["schema"] == 1,
-            "unsupported Fedora 45 source lock schema")
+    require(isinstance(source, dict) and type(source.get("schema")) is int
+            and source["schema"] in (1, 2), "unsupported Fedora 45 source lock schema")
+    object_keys(source, {"schema", "recorded_on", "image", "kernel"}
+                | ({"upgrades"} if source["schema"] == 2 else set()))
     require(isinstance(source["recorded_on"], str)
             and re.fullmatch(r"\d{4}-\d{2}-\d{2}", source["recorded_on"]),
             "Fedora 45 source lock needs its recorded date")
@@ -550,34 +621,19 @@ def fedora45_artifacts(snapshot: Snapshot, declaration: Any) -> list[dict[str, s
     kernel = source["kernel"]
     object_keys(kernel, {"build_id", "kernel_release", "source_rpm", "source_git_commit",
                          "primary_metadata_sha256", "packages"})
-    for release in (image["kernel_release"], kernel["kernel_release"]):
-        require(isinstance(release, str) and re.fullmatch(
-            r"\d+\.\d+\.\d+-[A-Za-z0-9._+-]+\.omni\.fc45\.riscv64", release),
-            "invalid Fedora 45 Omni kernel release")
-    require(type(kernel["build_id"]) is int and kernel["build_id"] > 0
-            and kernel["source_rpm"] == "kernel-" + kernel["kernel_release"].removesuffix(".riscv64") + ".src.rpm"
-            and kernel["source_git_commit"] is None,
-            "Fedora 45 COPR build identity or unproven source binding changed")
-    require(isinstance(kernel["primary_metadata_sha256"], str)
-            and re.fullmatch(r"[0-9a-f]{64}", kernel["primary_metadata_sha256"]),
-            "invalid Fedora 45 repository metadata identity")
-    packages = kernel["packages"]
-    require(isinstance(packages, list) and len(packages) == len(F45_PACKAGES),
-            "Fedora 45 must enumerate all five recorded binary RPMs")
-    for package, name in zip(packages, F45_PACKAGES):
-        object_keys(package, {"name", "filename", "url", "sha256"})
-        require(package["name"] == name
-                and package["filename"] == name + "-" + kernel["kernel_release"] + ".rpm"
-                and package["url"] == F45_COPR_PACKAGES + package["filename"],
-                "Fedora 45 RPM inventory or origin changed")
-    for artifact in (image, *packages):
+    require(f45_release(image["kernel_release"]), "invalid Fedora 45 Omni kernel release")
+    f45_update(kernel, F45_KERNEL_PROJECT)
+    artifacts = [image, *kernel["packages"]]
+    if source["schema"] == 2:
+        artifacts.extend(f45_upgrades(source["upgrades"], image, kernel))
+    for artifact in artifacts:
         require(isinstance(artifact["sha256"], str)
                 and re.fullmatch(r"[0-9a-f]{64}", artifact["sha256"]),
                 "invalid Fedora 45 artifact SHA256")
     recipe = text(snapshot.read("wiki/" + F45_RECIPE, page=True))
     require(image["url"] in recipe and image["sha256"] in recipe,
             "Fedora 45 recipe does not retain the reviewed image URL and hash")
-    return [image, *packages]
+    return artifacts
 
 
 def manifest(snapshot: Snapshot) -> dict[str, Any]:

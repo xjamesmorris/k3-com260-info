@@ -28,9 +28,11 @@ partition creation remain unverified.
 | Installed 7.2.8 but selected DTB or `/boot/dtb` still identifies 7.2.7 | F45 package/boot-file handoff | The installer deliberately preserves the old symlink. It also creates the separately named 7.2.8 bootstrap DTB, copied when the packaged 7.2.7/7.2.8 DTBs are byte-identical, as they are for these pins. | Use the [pinned update and the installer's summary](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#install-the-pinned-kernel-update), load the 7.2.8 directory's `k3-com260-bootstrap.dtb`, then verify the actual selected files. A symlink or package transaction is not a running-kernel check. |
 | Ethernet link/IPv6 works but DHCPv4 and SSH are late | Networking after boot, including after switching between F45 and F44 | All four October 20 F45 boots obtained DHCPv4 within about 23–26 seconds, but F44 on the same board then took about 145 seconds. On October 19, two boots took about 4–9 seconds and a third about 7.5 minutes without intervention. The cause was not determined; prompt IPv4 is not established for every boot. | Keep serial access, wait, and record link, address and elapsed-time observations using the [updated-host checks](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#boot-and-check-the-updated-host) rather than rebooting repeatedly. Do not label a missing early SSH connection a kernel lockup. |
 | Unexpected ESP mounts despite the direct non-UEFI route | F45 services/timers | On October 19, on the first 7.2.8 boot, RTC correction triggered catch-up timers and fwupd/udisks2 briefly mounted both the retained F44 NVMe ESP and Bianbu UFS ESP read-write. On October 20, with fwupd masked offline by the populate helper before first boot, no boot mounted a FAT filesystem. | Read the recipe's [release-scoped fwupd workaround](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe). Masking and no-FAT-mount checks are not isolation guarantees for other storage. |
-| Only the USB2 root hub appears | F45 USB probing | DWC3 `81400000.usb3` remained deferred, as in the earlier F44 observation. USB3 enablement is not a result of these boots. | Preserve the reported scope; do not infer external USB support from host/NVMe success or introduce an untested hub change. |
-| Fan runs at full speed, loudly | F45 fan control | Expected: the pinned 7.2.7 and 7.2.8 kernels have no fan driver, and the fan ran at full speed in every recorded F45 boot. | Cooling-fan work is deferred; this page supplies no fan-control workflow. Full speed is not thermal protection, and not a reason to reflash. |
-| No SoC thermal zones | F45 thermal visibility | Neither 7.2.7 nor 7.2.8 exposed them. The recorded 43.9 °C NVMe temperature is not a SoC measurement. | Cooling-fan work is explicitly deferred. No thermal-protection, fail-safe or unattended-use assurance is established. |
+| Only the USB2 root hub appears | F45 USB probing | Under 7.2.7 and 7.2.8, DWC3 `81400000.usb3` remained deferred, as in the earlier F44 observation. In the one 7.3.0 boot it probed and a USB 3.0 hub enumerated at 5 Gb/s; no USB transfer was tested. | Record the running release. Do not infer external USB support from host/NVMe success or introduce an untested hub change. |
+| Fan runs at full speed, loudly | F45 fan control | Expected under 7.2.7 and 7.2.8, which have no fan control: the fan ran at full speed in every boot of them. | Install the [7.3.0 fan-control upgrade](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#upgrade-to-73-with-fan-control). Full speed is not thermal protection, and not a reason to reflash. |
+| No SoC thermal zones, or no `ctf2301` cooling device | F45 thermal visibility | Expected under 7.2.x: their DTBs have no thermal zones. The 7.3.0 boot registered seven zones and the `ctf2301` cooling device. | On 7.3.0, check that U-Boot loaded `dtb-7.3.0-65.1.riscv64.omni.fc45.riscv64/spacemit/k3-com260-ifx.dtb` (47,633 bytes), not a 7.2.x or bootstrap DTB; `/boot/dtb` still points at 7.2.7. Then check that `lm63` and `k3_tsensor` are loaded. |
+| Fan stays faster after a load ends | F45 7.3.0 fan control | Recorded on October 21: after a two-minute load the fan stayed at cooling state 105 (about 4,890 rpm) with `cluster0` back at 47–48 °C, consistent with the 50 °C trip's 5 °C hysteresis. | Expected, not a fault. Leave fan control to the kernel; do not run a userspace fan-control script or daemon against the same controller. |
+| New kernel warnings on 7.3.0, such as `cma: Failed to reserve 64 MiB` or `irq_aclint_sswi: unable to create muxed IPIs` | F45 7.3.0 kernel messages | Recorded in the one 7.3.0 boot, with an interrupt-controller init failure and ACPI `_DSM` messages; none of the checks made failed, and their effects were not investigated. | Compare with the [result record](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md) before reporting a regression; identify the exact release. |
 | `/dev/kvm` is missing or inaccessible | F45 host initialization or access policy | The public F45 result records host initialization and the device, not a QEMU/guest workload. | Check the [updated host's release and kernel messages](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#boot-and-check-the-updated-host). Do not make the device world-writable, import an F44 CPU workaround, or report a guest pass from a node alone. |
 
 ## Historical F44 build and guest checkpoints
@@ -134,11 +136,13 @@ for report preparation and human-controlled submission.
 
 The [F45 public record](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
 covers one fresh installation into existing p4/p5 partitions on October 20
-(one bootstrap boot and three attended 7.2.8 boots) and the earlier
-October 19 side-by-side bring-up. It is not a partition-creation,
+(one bootstrap boot and three attended 7.2.8 boots), one attended boot of
+the 7.3.0 fan-control upgrade on October 21 and the earlier October 19
+side-by-side bring-up. It is not a partition-creation,
 other-maintenance-host or whole-disk-imaging result, guest test, thermal
-qualification or long-duration result. The fan runs at full speed and all
-fan work remains deferred; this page supplies no fan-control workflow.
+qualification or long-duration result. Under 7.2.x the fan runs at full
+speed; the single 7.3.0 boot with a two-minute load does not establish
+thermal protection, fan-failure behavior or safe unattended operation.
 
 Display, carrier external USB, suspend and VFIO remain open. A working NVMe
 root or enumerated endpoint is not a test of every peripheral. Other
@@ -158,11 +162,11 @@ provides production or hostile-guest isolation assurance.
 
 **Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot and Linux-workstation/NVMe F45 host route, with separately labeled archived F44 build/guest checkpoints. Carrier PCB revision is not established by `k3-com260-ifx`.
 
-**Evidence:** Public October 20 and October 19 F45 results/pins and preserved September 25 F44 record, helper guards and dldo4 RFC. Upstream reporting references retain their September 27 review. Checkpoint failures on this page are not all observed defects.
+**Evidence:** Public October 21, 20 and 19 F45 results/pins and preserved September 25 F44 record, helper guards and dldo4 RFC. Upstream reporting references retain their September 27 review. Checkpoint failures on this page are not all observed defects.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-21.
 
-**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 F45 p4/p5 bootstrap and three pre-fan 7.2.8 boots; 2026-09-25 archived F44 setup. The dldo4 RFC has no separate test date. No F45 guest test here.
+**Hardware observation:** 2026-10-21 one attended 7.3.0 fan-control boot with a two-minute load; 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 F45 p4/p5 bootstrap and three pre-fan 7.2.8 boots; 2026-09-25 archived F44 setup. The dldo4 RFC has no separate test date. No F45 guest test here.
 
 **Destructive operations:** None in the report template. Linked installation/recovery procedures can overwrite disks or NOR/UFS; a diagnostic symptom alone is not a reason to reimage or flash.
 

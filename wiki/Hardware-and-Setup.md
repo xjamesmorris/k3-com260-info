@@ -116,9 +116,10 @@ before any disk write; then follow
 [Install Fedora](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora).
 Keep the initial host on a trusted isolated LAN and follow the recipe's
 credential and SSH host-key checks before wider network exposure.
-Cooling-fan work is explicitly deferred: the fan runs at full speed under
-the pinned F45 kernels, which exposed no SoC thermal zones; an NVMe
-temperature is not a SoC measurement. No thermal-protection, fail-safe, or
+The fan runs at full speed under the 7.2.7 and 7.2.8 kernels, which expose
+no SoC thermal zones; the pinned 7.3.0 upgrade adds kernel fan control,
+recorded in one attended boot. An NVMe temperature is not a SoC
+measurement. No thermal-protection, fail-safe, or
 unattended-operation assurance is established.
 
 ## Source scope
@@ -137,11 +138,11 @@ its connector diagrams.
 
 **Applies to:** Firefly-sold 8 GiB K3-CoM260 kit; exact carrier PCB model/revision unknown; Linux workstation, Linux maintenance host and two existing NVMe partitions.
 
-**Evidence:** Public F45 results recorded October 20 and October 19 and reviewed locally on October 20, and preserved September 25 F44 setup details. Manufacturer/seller and electrical-reference context retains its September 27 review.
+**Evidence:** Public F45 results recorded October 21, 20 and 19 and reviewed locally on October 21, and preserved September 25 F44 setup details. Manufacturer/seller and electrical-reference context retains its September 27 review.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-21.
 
-**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 side-by-side F45 host boots and 2026-09-25 archived setup snapshot. No new electrical measurement.
+**Hardware observation:** 2026-10-21 one attended 7.3.0 fan-control boot; 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 side-by-side F45 host boots and 2026-09-25 archived setup snapshot. No new electrical measurement.
 
 **Destructive operations:** None on this page. The linked installation reformats the two selected NVMe partitions, destroying their contents.
 

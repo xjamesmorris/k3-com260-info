@@ -268,6 +268,37 @@ def fedora45_fixture_lock():
     }
 
 
+F45_KERNEL_PROJECT = "@forge-riscv-members/riscv64_omni_kernel"
+F45_MAINLINE_PROJECT = "@forge-riscv-members/riscv64_omni_mainline_kernel"
+F45_SCHEMA1_BLOB = "9cf08440c1011d8b043d41a51abe1519b0a831b1"
+REVIEWED_F45_SOURCE_BLOBS = c.F45_SOURCE_BLOBS
+
+
+def fedora45_upgrade(build_id, release, requires_running, project=F45_MAINLINE_PROJECT):
+    return {
+        "build_id": build_id, "copr_project": project, "kernel_release": release,
+        "source_rpm": "kernel-" + release.removesuffix(".riscv64") + ".src.rpm",
+        "source_git_commit": None, "primary_metadata_sha256": "8" * 64,
+        "requires_running": requires_running,
+        "boot_dtb": {"path": "spacemit/k3-com260-ifx.dtb", "sha256": "9" * 64},
+        "packages": [
+            {"name": name, "filename": name + "-" + release + ".rpm", "sha256": "abcde"[index] * 64,
+             "url": ("https://download.copr.fedorainfracloud.org/results/" + project
+                     + "/fedora-45-riscv64/Packages/k/" + name + "-" + release + ".rpm")}
+            for index, name in enumerate(c.F45_PACKAGES)
+        ],
+    }
+
+
+def fedora45_upgrade_lock():
+    """Lock schema 2: the schema-1 fixture plus one pinned upgrade from the mainline project."""
+    lock = fedora45_fixture_lock()
+    lock["schema"] = 2
+    lock["upgrades"] = [fedora45_upgrade(11177969, "7.3.0-65.1.riscv64.omni.fc45.riscv64",
+                                         [lock["kernel"]["kernel_release"]])]
+    return lock
+
+
 class Fedora45Inputs(unittest.TestCase):
     def setUp(self):
         self.manifest = fixture_manifest()
@@ -322,6 +353,95 @@ class Fedora45Inputs(unittest.TestCase):
         )
         hrefs = c.link_values(c.parser().parse(checked.output[c.F45_RECIPE].decode()))
         self.assertNotIn(self.lock["image"]["url"], hrefs)
+
+    def test_schema2_upgrade_rpms_are_mandatory_critical_artifacts(self):
+        self.lock = fedora45_upgrade_lock()
+        with self.repin_fixture_lock():
+            checked = ck.validate(self.fixture, today=date(2026, 10, 21))
+        added = [link for link in checked.links if link.page == c.F45_RECIPE]
+        self.assertEqual(sum(link.role == "critical-artifact" for link in added), 11)
+        self.assertEqual(sum(link.role == "critical-checksum" for link in added), 1)
+        upgrade = self.lock["upgrades"][0]["packages"]
+        self.assertEqual(
+            {link.url for link in added},
+            {self.lock["image"]["url"], self.lock["image"]["checksum_url"]}
+            | {package["url"] for package in self.lock["kernel"]["packages"] + upgrade},
+        )
+        for package in upgrade:
+            self.assertIn(ck.Link(c.F45_RECIPE, package["url"], "critical-artifact",
+                                  package["sha256"], package["filename"]), added)
+
+    def test_published_schema1_lock_blob_still_validates_with_reviewed_pins(self):
+        data = c.Git(ROOT).blob(F45_SCHEMA1_BLOB)
+        lock = c.load_json(data, "published Fedora 45 lock")
+        self.assertEqual(lock["schema"], 1)
+        self.fixture.files[c.F45_SOURCES] = data
+        self.fixture.files["wiki/" + c.F45_RECIPE] = page_bytes(
+            extra="```sh\ncurl " + lock["image"]["url"] + "\nprintf '" + lock["image"]["sha256"] + "'\n```\n",
+        )
+        declaration = {"source": {"path": c.F45_SOURCES, "blob": F45_SCHEMA1_BLOB}, "recipe": c.F45_RECIPE}
+        with mock.patch.object(c, "F45_SOURCE_BLOBS", REVIEWED_F45_SOURCE_BLOBS):
+            artifacts = c.fedora45_artifacts(self.fixture, declaration)
+        self.assertEqual([artifact["url"] for artifact in artifacts],
+                         [lock["image"]["url"]] + [package["url"] for package in lock["kernel"]["packages"]])
+
+    def test_schema2_upgrade_identity_origin_and_order_are_strict(self):
+        running = "7.2.8-300.0.riscv64.omni.fc45.riscv64"
+        current = "7.3.0-65.1.riscv64.omni.fc45.riscv64"
+        later = "7.3.1-1.0.riscv64.omni.fc45.riscv64"
+
+        def lock_with(*upgrades, schema=2, **changes):
+            lock = fedora45_upgrade_lock()
+            lock["schema"] = schema
+            lock["upgrades"] = list(upgrades) or lock["upgrades"]
+            lock["upgrades"][0].update(changes)
+            return lock
+
+        chained = lock_with(fedora45_upgrade(11177969, current, [running]),
+                            fedora45_upgrade(11177970, later, [current, running], F45_KERNEL_PROJECT))
+        self.lock = chained
+        with self.repin_fixture_lock():
+            self.assertEqual(len(c.fedora45_artifacts(self.fixture, self.manifest["fedora45"])), 16)
+        outside = lock_with()
+        package = outside["upgrades"][0]["packages"][2]
+        package["url"] = package["url"].replace(F45_MAINLINE_PROJECT, F45_KERNEL_PROJECT)
+        missing = lock_with()
+        del missing["upgrades"]
+        empty = lock_with()
+        empty["upgrades"] = []
+        unreviewed = "@forge-riscv-members/riscv64_unreviewed_kernel"
+        dtb = "spacemit/k3-com260-ifx.dtb"
+        cases = {
+            "schema 2 without upgrades": (missing, "unsupported fields"),
+            "empty upgrades": (empty, "non-empty upgrades"),
+            "schema 1 with upgrades": (lock_with(schema=1), "unsupported fields"),
+            "unknown project": (lock_with(fedora45_upgrade(11177969, current, [running], unreviewed)),
+                                "unreviewed COPR project"),
+            "URL outside its project": (outside, "inventory or origin"),
+            "unpinned running kernel": (lock_with(requires_running=["7.2.9-300.0.riscv64.omni.fc45.riscv64"]),
+                                        "earlier pinned running"),
+            "own release running": (lock_with(requires_running=[current]), "earlier pinned running"),
+            "later upgrade running": (lock_with(fedora45_upgrade(11177969, current, [later]),
+                                                fedora45_upgrade(11177970, later, [running])),
+                                      "earlier pinned running"),
+            "no running kernel": (lock_with(requires_running=[]), "earlier pinned running"),
+            "DTB traversal": (lock_with(boot_dtb={"path": "../" + dtb, "sha256": "9" * 64}), "unsafe relative"),
+            "absolute DTB": (lock_with(boot_dtb={"path": "/boot/" + dtb, "sha256": "9" * 64}), "unsafe relative"),
+            "not a DTB": (lock_with(boot_dtb={"path": dtb[:-1] + "s", "sha256": "9" * 64}), "boot DTB"),
+            "DTB without hash": (lock_with(boot_dtb={"path": dtb}), "unsupported fields"),
+            "malformed DTB hash": (lock_with(boot_dtb={"path": dtb, "sha256": "9" * 63}), "boot DTB"),
+            "kernel build repeated": (lock_with(build_id=11035571), "repeats a pinned COPR build"),
+            "upgrade build repeated": (lock_with(fedora45_upgrade(11177969, current, [running]),
+                                                 fedora45_upgrade(11177969, later, [current])),
+                                       "repeats a pinned COPR build"),
+            "release repeated": (lock_with(fedora45_upgrade(11177969, current, [running]),
+                                           fedora45_upgrade(11177970, current, [running])),
+                                 "repeats a pinned COPR build or kernel release"),
+        }
+        for name, (lock, message) in cases.items():
+            self.lock = lock
+            with self.subTest(case=name), self.repin_fixture_lock(), self.assertRaisesRegex(c.Invalid, message):
+                c.manifest(self.fixture)
 
     def test_f45_declaration_and_both_release_pages_are_required(self):
         original = copy.deepcopy(self.manifest)
@@ -979,16 +1099,17 @@ class NetworkChecks(unittest.TestCase):
                      "Signature": "Zml4dHVyZSBzaWduYXR1cmUhIQ==",
                      "response-cache-control": "max-age=60"}
 
-    def copr_chain(self, *, path_digest=None, fields=None, pulp=None, final=None):
+    def copr_chain(self, *, path_digest=None, fields=None, pulp=None, final=None, project=F45_KERNEL_PROJECT):
         """COPR -> Pulp -> signed S3 fixture, assembled at runtime to stay privacy-clean."""
         digest = "ab" * 32
         path_digest = path_digest or digest
         filename = "kernel-fixture-1.0-1.fc45.riscv64.rpm"
-        origin = c.F45_COPR_PACKAGES + filename
+        packages = project + "/fedora-45-riscv64/Packages/k/" + filename
+        origin = c.F45_COPR_RESULTS + packages
         domain = "-".join(digit * width for digit, width in zip("12345", (8, 4, 4, 4, 12)))
         signed = ("https://" + h.COPR_S3_HOST + "/artifact/" + domain + "/" + path_digest[:2] + "/"
                   + path_digest[2:] + "?" + urlencode(self.SIGNED_FIELDS if fields is None else fields))
-        self.responses = [h.Response(301, {"location": pulp or c.F45_PULP_PACKAGES + filename}),
+        self.responses = [h.Response(301, {"location": pulp or c.F45_PULP_CONTENT + packages}),
                           h.Response(302, {"location": signed}),
                           final or h.Response(200, {"content-type": "application/octet-stream",
                                                     "content-length": "261457"})]
@@ -1023,6 +1144,24 @@ class NetworkChecks(unittest.TestCase):
                     self.assertNotIn(secret, str(raised.exception))
                 if name != "object redirects again":
                     self.assertNotIn(signed, [item[1] for item in self.requests])
+
+    def test_copr_signed_redirect_is_scoped_to_the_links_own_project(self):
+        origin, filename, digest, signed = self.copr_chain(project=F45_MAINLINE_PROJECT)
+        report = self.checker.all([ck.Link(c.F45_RECIPE, origin, "critical-artifact", digest, filename)], [])
+        self.assertEqual([item[1] for item in self.requests],
+                         [origin, origin.replace(c.F45_COPR_RESULTS, c.F45_PULP_CONTENT, 1), signed])
+        self.assertEqual((report[0]["url"], report[0]["status"]), (origin, "available-head"))
+        cases = ((F45_MAINLINE_PROJECT, F45_KERNEL_PROJECT), (F45_KERNEL_PROJECT, F45_MAINLINE_PROJECT),
+                 ("@forge-riscv-members/riscv64_unreviewed_kernel",) * 2)
+        for project, pulp_project in cases:
+            pulp = c.F45_PULP_CONTENT + pulp_project + "/fedora-45-riscv64/Packages/k/" + filename
+            with self.subTest(project=project, pulp=pulp_project):
+                origin, filename, digest, signed = self.copr_chain(project=project, pulp=pulp)
+                with self.assertRaises(c.Invalid) as raised:
+                    self.checker.one(origin, "critical-artifact", expected_sha256=digest, filename=filename)
+                self.assertNotIsInstance(raised.exception, h.Unavailable)
+                self.assertNotIn(self.SIGNED_FIELDS["Signature"], str(raised.exception))
+                self.assertEqual([item[1] for item in self.requests], [origin, pulp])
 
     def test_signed_redirect_is_not_available_to_other_links(self):
         origin, filename, digest, signed = self.copr_chain()
@@ -1604,6 +1743,30 @@ class Fedora45PublicationFixtures(GitFixture):
             self.assertEqual(self.publish(prepared), "published")
         wiki = c.Git(self.wiki_remote)
         self.assertTrue(wiki.ancestor(previous, wiki.commit("HEAD")))
+
+    def test_lock_schema2_upgrade_publishes_over_the_schema1_lock_publication(self):
+        self.upgrade_source()
+        self.publish(self.prepare())
+        previous = c.Git(self.wiki_remote).commit("HEAD")
+        lock = fedora45_upgrade_lock()
+        data = c.canonical(lock)
+        pin = c.blob_id(data)
+        (self.root / c.F45_SOURCES).write_bytes(data)
+        self.manifest["fedora45"]["source"]["blob"] = pin
+        (self.root / c.MANIFEST).write_bytes(c.canonical(self.manifest))
+        self.commit("Fixture lock schema 2 with a pinned upgrade")
+        self.public_source()
+        with mock.patch.object(c, "F45_SOURCE_BLOBS", c.F45_SOURCE_BLOBS | {pin}):
+            prepared = self.prepare(adopt=False)
+            receipt, _ = p.read_receipt(self.root, *prepared)
+            self.assertEqual(sum(link["role"].startswith("critical-")
+                                 for link in receipt["online_approval"]), 16)
+            self.assertEqual(self.publish(prepared), "published")
+        wiki = c.Git(self.wiki_remote)
+        self.assertTrue(wiki.ancestor(previous, wiki.commit("HEAD")))
+        for package in lock["upgrades"][0]["packages"]:
+            self.assertIn(("HEAD", package["url"]), self.online.requests)
+            self.assertNotIn(("GET", package["url"]), self.online.requests)
 
 
 class SnapshotFixtures(GitFixture):

@@ -15,6 +15,8 @@ record a fresh installation into existing p4/p5 partitions, made from an
 F44 maintenance host on p1–p3 of the same NVMe: the 7.2.7 bootstrap boot,
 first login, the exact 7.2.8 update and three attended 7.2.8 boots, with
 the partition table, F44 boot files and Bianbu UFS ESP verified unchanged.
+On October 21 the pinned 7.3.0 fan-control upgrade was installed from
+7.2.8 and booted once.
 Creating the partitions, other kinds of maintenance host and whole-disk
 imaging were **not** performed; see the recipe's
 [unverified alternatives](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#unverified-alternatives).
@@ -101,10 +103,26 @@ fwupd was masked offline, before first boot, by the populate helper's
 tested `mask` choice; that release-scoped workaround is not isolation of
 other storage.
 
-**Cooling-fan work is deferred.** The pinned kernels have no fan control,
-so the fan runs at full speed, loudly; no SoC thermal zones were exposed.
-These boots do not establish thermal protection, fail-safe behavior, or
-safe unattended operation. Finish with the recipe's
+**The fan stays at full speed on 7.2.x.** 7.2.7 and 7.2.8 have no fan
+control and expose no SoC thermal zones; Phase 3 adds kernel fan control.
+
+## Phase 3: Upgrade to 7.3.0 for fan control
+
+Use [Upgrade to 7.3 with fan control](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#upgrade-to-73-with-fan-control).
+From the running, checked 7.2.8 host, the same helpers with
+`--build 11177969` fetch, transfer and install COPR build **`11177969`**,
+**`7.3.0-65.1.riscv64.omni.fc45.riscv64`**, beside 7.2.7 and 7.2.8. Its
+packaged `k3-com260-ifx.dtb` carries the CoM260 thermal zones and fan
+cooling map, so the installer creates no bootstrap DTB, and U-Boot loads
+that packaged file instead of `k3-com260-bootstrap.dtb`.
+
+**Checkpoint:** the exact 7.3.0 release, seven thermal zones and the
+`ctf2301` cooling device, plus the 7.2.8 storage, network and
+kernel-message checks. In the October 21 boot the fan turned at about
+3,840 rpm at a 47–48 °C idle and about 4,890 rpm under a two-minute
+all-core load (up to 58 °C); the operator found it much quieter than 7.2.x.
+One boot and a short load do not establish thermal protection, fan-failure
+behavior or safe unattended operation. Finish with the recipe's
 [next steps and readiness record](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#next-steps-and-readiness-record)
 and [Maintain and update](https://github.com/xjamesmorris/k3-com260-info/wiki/Maintain-and-Update).
 
@@ -144,11 +162,11 @@ substitutions.
 
 **Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, carrier PCB revision unknown; Linux workstation and maintenance host, two existing NVMe partitions, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot.
 
-**Evidence:** Public October 20 fresh-installation and October 19 side-by-side F45 results, exact image/package lock and maintained F45 recipe; partition creation, other maintenance hosts and whole-disk imaging are untested. The September 25 F44 recipe remains archived, with its September 27 source review unchanged.
+**Evidence:** Public October 21 fan-control upgrade, October 20 fresh-installation and October 19 side-by-side F45 results, exact image/package lock and maintained F45 recipe; partition creation, other maintenance hosts and whole-disk imaging are untested. The September 25 F44 recipe remains archived, with its September 27 source review unchanged.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-21.
 
-**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 F45 p4/p5 bootstrap and three attended pre-fan 7.2.8 smoke boots. No F45 guest workload was tested.
+**Hardware observation:** 2026-10-21 exact COPR 7.3.0 upgrade from 7.2.8 and one attended 7.3.0 boot; 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 F45 p4/p5 bootstrap and three attended pre-fan 7.2.8 smoke boots. No F45 guest workload was tested.
 
 **Destructive operations:** Populating reformats the two selected NVMe partitions, destroying their contents, without changing the partition table. Package installation changes the RPM database, modules and `/boot`; boot checks require attended resets. Deliberately chosen factory recovery erases NOR and all UFS, including the saved environment. This page authorizes none of these actions.
 

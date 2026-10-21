@@ -14,14 +14,18 @@ the exact 7.2.8 update and three attended 7.2.8 boots; see
 [RESULTS.md](RESULTS.md), which also keeps the earlier October 19
 side-by-side record. Creating partitions, other maintenance hosts and
 whole-disk imaging remain unverified. Host KVM initialization and `/dev/kvm`
-were observed; an F45 guest workload was **not** tested. **All cooling-fan
-work is deferred:** this bundle supplies neither fan code nor fan
-installation instructions, thermal protection, or assurance of safe
-unattended operation; the fan runs at full speed under the pinned kernels.
+were observed; an F45 guest workload was **not** tested. The fan ran at full
+speed under 7.2.7 and 7.2.8, neither of which exposed SoC thermal zones. The
+lock also pins the **7.3.0 fan-control upgrade** described below; on
+October 21, 2026 these helpers installed it from 7.2.8 and it was booted
+once, attended, with the kernel controlling the fan (see
+[RESULTS.md](RESULTS.md)). This bundle supplies no fan code of its own: fan
+control comes from the packaged kernel and DTB. It claims no thermal
+protection or safe unattended operation.
 
 **Publication check:** the pinned COPR RPM URLs redirect through Red Hat's Pulp
 content service to short-lived signed S3 links. The wiki publication checker
-accepts that hop only for these five locked RPMs, and only when the S3 object
+accepts that hop only for RPMs pinned in the lock, and only when the S3 object
 path is the RPM's pinned SHA-256; the signed link is never recorded. See the
 [publication contract](../tools/wiki/README.md#fedora-45-inputs). The helpers
 still verify every downloaded RPM against the lock.
@@ -34,15 +38,15 @@ F44 is neither an F45 prerequisite nor evidence of F45 guest operation.
 
 | Path | Purpose |
 | --- | --- |
-| [`files/sources.lock.json`](files/sources.lock.json) | Public image and five-binary-RPM artifact identities, recorded October 19, 2026. |
+| [`files/sources.lock.json`](files/sources.lock.json) | Public image identity and two pinned kernel updates of five binary RPMs each (schema 2, recorded October 21, 2026; the image and 7.2.8 pins are unchanged from October 19). |
 | [`RESULTS.md`](RESULTS.md) | Bounded hardware observations, stack, failures and nonclaims. |
 | [`scripts/extract-riscv-zboot.sh`](scripts/extract-riscv-zboot.sh) | Standalone validated gzip/zstd EFI-zboot-to-raw-Image extraction. |
-| [`scripts/fetch-f45-copr-kernel.sh`](scripts/fetch-f45-copr-kernel.sh) | Download exactly the locked five binary RPMs; no SRPM. |
-| [`scripts/transfer-f45-copr-kernel-to-k3.sh`](scripts/transfer-f45-copr-kernel-to-k3.sh) | Verify locally, transfer the self-contained installer bundle over SSH, verify remotely. |
-| [`scripts/k3-install-rpm-kernel.sh`](scripts/k3-install-rpm-kernel.sh) | Guarded side-by-side kernel installation; no reboot or saved boot-default change. |
+| [`scripts/fetch-f45-copr-kernel.sh`](scripts/fetch-f45-copr-kernel.sh) | Download exactly the selected build's five locked binary RPMs; no SRPM. |
+| [`scripts/transfer-f45-copr-kernel-to-k3.sh`](scripts/transfer-f45-copr-kernel-to-k3.sh) | Verify locally, transfer the self-contained installer bundle for the selected build over SSH, verify remotely. |
+| [`scripts/k3-install-rpm-kernel.sh`](scripts/k3-install-rpm-kernel.sh) | Guarded side-by-side kernel installation of the selected build, with a bootstrap DTB (7.2.8) or a lock-checked packaged DTB (7.3.0); no reboot or saved boot-default change. |
 | [`scripts/populate-f45-volumes.sh`](scripts/populate-f45-volumes.sh) | Guarded fresh installation of the locked image into two existing partitions, with a read-only `--check`; no partition-table, other-partition, firmware or U-Boot change. |
 | [`scripts/make-bootstrap-dtb.sh`](scripts/make-bootstrap-dtb.sh) | Separately named two-property bootstrap DTB from a packaged DTB, verified by a decompiled diff. |
-| [`scripts/verify-f45-bundle.py`](scripts/verify-f45-bundle.py) | Shared standard-library lock, inventory, digest and RPM-header verifier. |
+| [`scripts/verify-f45-bundle.py`](scripts/verify-f45-bundle.py) | Shared standard-library lock, build-selection, inventory, digest and RPM-header verifier. |
 | [`tests/test_helpers.py`](tests/test_helpers.py) | Offline file fixtures and mocked external commands. |
 
 The locked image is the community-contributed, **non-official Fedora RISC-V
@@ -61,20 +65,41 @@ and `kernel-modules-extra`. Their recorded hashes came from repository
 primary metadata with SHA-256
 `e8ea2f04bb1fbf3c4465676cd608b33f0a90d39a8400733e04da4ccc1a823fa3`
 and were compared with the downloaded bytes during the recorded work.
-These fixed inputs are not an automatic “latest kernel” selection.
+It is the package helpers' default build.
 
-The RPM headers carried an OpenPGP key ID, but inspection reported **`NOKEY`**:
-the pins do **not** constitute verified publisher signatures. The installer
-uses `--nogpgcheck` only after exact digest and metadata verification.
-`kernel-7.2.8-300.0.riscv64.omni.fc45.src.rpm` is a provenance identifier,
-**not** a required download. Its original URL was unavailable (HTTP 404)
-during the October 19 review. No replacement SRPM is silently substituted,
-and the exact source Git commit remains **unproven**, represented by `null`.
-The helpers do not fetch metadata or an SRPM to repair that provenance gap.
+The **fan-control upgrade** is
+[`@forge-riscv-members/riscv64_omni_mainline_kernel`, COPR build 11177969](https://copr.fedorainfracloud.org/coprs/g/forge-riscv-members/riscv64_omni_mainline_kernel/build/11177969/),
+chroot `fedora-45-riscv64`, kernel `7.3.0-65.1.riscv64.omni.fc45.riscv64`,
+selected with `--build 11177969` and installed only from a running 7.2.8.
+It has the same five package names; their recorded hashes came from primary
+metadata with SHA-256
+`44e0935a6d86f3d20904cf16aa0e03faa5b1f9b785d52b264140ddf2b3a15604`.
+Its packaged `spacemit/k3-com260-ifx.dtb` (47,633 bytes, SHA-256
+`a096de8c2a6478c9a7f29e01a97f029449e114feba5faae6de8ab0ef726856ef`)
+already includes the K3 regulator settings and adds the CoM260 thermal zones
+and the CTF2301 fan cooling map, so 7.3.0 boots that packaged DTB and gets
+**no** bootstrap DTB: `make-bootstrap-dtb.sh` would refuse it, because
+`dldo4` already has `regulator-always-on` and there is no `/hub-reset` node.
+The 7.3.0 path has one attended hardware boot (October 21). These fixed
+inputs are not an automatic “latest kernel” selection.
+
+The RPM headers of both builds carried an OpenPGP key ID, but inspection
+reported **`NOKEY`** for each: the pins do **not** constitute verified
+publisher signatures. The installer uses `--nogpgcheck` only after exact digest and
+metadata verification. The source RPMs named by the binary headers,
+`kernel-7.2.8-300.0.riscv64.omni.fc45.src.rpm` and
+`kernel-7.3.0-65.1.riscv64.omni.fc45.src.rpm`, are provenance identifiers,
+**not** required downloads. The 7.2.8 SRPM's original URL was unavailable
+(HTTP 404) during the October 19 review. No replacement SRPM is silently
+substituted, and neither build's exact source Git commit is proven; each is
+represented by `null`. The helpers do not fetch metadata or an SRPM to
+repair that provenance gap.
 
 The helper interfaces derive from the recorded bring-up workflow. The exact
-helper bytes listed in [RESULTS.md](RESULTS.md) were exercised on hardware on
-October 20, 2026; later changes need their own hardware check. No imported
+helper bytes listed in [RESULTS.md](RESULTS.md) were exercised on hardware:
+the October 20 set for the installation and 7.2.8 update, and the
+October 21 set, with the `--build` selection and the 7.3.0 packaged-DTB
+mode, for the 7.3.0 upgrade. Later changes need their own hardware check. No imported
 author or sign-off is asserted. The SPDX declarations cover these project
 files, not the Fedora image or COPR packages. Human authorship, provenance
 review and publication remain subject to [LLM-POLICY.md](../LLM-POLICY.md).
@@ -93,12 +118,12 @@ No helper requires private notes, private files or an operator-specific path.
 | Interface | Dependencies and privileges | Effects |
 | --- | --- | --- |
 | `extract-riscv-zboot.sh INPUT OUTPUT` | Bash, Python 3.10+, and `zstd` for zstd input; read access to INPUT and write access to OUTPUT's existing parent. The output filesystem must support hard links. | Validates container/header/bounds, declared decompressed size and raw RISC-V Image header; publishes OUTPUT atomically without overwriting. |
-| `fetch-f45-copr-kernel.sh OUTPUT_DIR` | Bash, Python 3.10+, `curl`, `rpm`, GNU coreutils; ordinary workstation user, network access and space for the RPMs. | Downloads exactly five HTTPS binary URLs, checks pinned bytes and RPM metadata, publishes a new directory containing only those RPMs. No install. |
-| `transfer-f45-copr-kernel-to-k3.sh BUNDLE_DIR fedora@HOST` | Locally: Bash, Python 3.10+, `rpm`, GNU coreutils, `awk`, `rsync`, OpenSSH client. Remotely: Bash, Python 3.10+, `rpm`, `rsync`, GNU coreutils and `awk`. Ordinary local and remote users; pretrusted host key and working SSH authentication. | Writes only a new bundle below the remote account's quoted `$HOME`; no root privilege or sudo configuration. |
-| `k3-install-rpm-kernel.sh BUNDLE_DIR` | Documented RISC-V K3 host; Bash, Python 3.10+, `rpm`, `dnf`, `dracut`, `grep`, GNU coreutils and `zstd` for the packaged zboot image; `dtc`, `fdtget` and `fdtput` when the bootstrap DTB must be generated; `restorecon` used if available. **Root** via the operator's authorized sudo policy. | Changes package database, module tree and `/boot`; retains older kernels, restores `/boot/dtb`, creates missing DTBs/initramfs, extracts `Image-RELEASE` and creates the candidate's bootstrap DTB. |
+| `fetch-f45-copr-kernel.sh [--build BUILD_ID] OUTPUT_DIR` | Bash, Python 3.10+, `curl`, `rpm`, GNU coreutils; ordinary workstation user, network access and space for the RPMs. | Downloads exactly the selected build's five HTTPS binary URLs (default 11035571), checks pinned bytes and RPM metadata for that build, publishes a new directory containing only those RPMs. No install. |
+| `transfer-f45-copr-kernel-to-k3.sh [--build BUILD_ID] BUNDLE_DIR fedora@HOST` | Locally: Bash, Python 3.10+, `rpm`, GNU coreutils, `awk`, `rsync`, OpenSSH client. Remotely: Bash, Python 3.10+, `rpm`, `rsync`, GNU coreutils and `awk`. Ordinary local and remote users; pretrusted host key and working SSH authentication. | Writes only a new `f45-copr-kernel-BUILD_ID` bundle below the remote account's quoted `$HOME`, verified remotely for the same build; no root privilege or sudo configuration. |
+| `k3-install-rpm-kernel.sh [--build BUILD_ID] BUNDLE_DIR` | Documented RISC-V K3 host running the build's required kernel; Bash, Python 3.10+, `rpm`, `dnf`, `dracut`, `grep`, GNU coreutils and `zstd` for the packaged zboot image; `dtc`, `fdtget` and `fdtput` only when the 7.2.8 bootstrap DTB must be generated (never for 7.3.0); `restorecon` used if available. **Root** via the operator's authorized sudo policy. | Changes package database, module tree and `/boot`; retains older kernels, restores `/boot/dtb`, creates missing DTBs/initramfs, extracts `Image-RELEASE`, then creates the 7.2.8 candidate's bootstrap DTB or checks the 7.3.0 packaged DTB against the lock. |
 | `populate-f45-volumes.sh [--check] IMAGE.raw.xz WHOLE_DISK BOOT_PART ROOT_PART` | Linux maintenance host booted from neither target; Bash, Python 3.10+, util-linux, `e2fsprogs`, `btrfs-progs`, `rsync`, `xz`, `zstd`, `dtc`/`fdtget`/`fdtput`, `systemctl`, `udevadm`, GNU coreutils. **Root**, the identity, expected-content, fwupd and acknowledgment variables listed by `--help`, and free space for the decompressed image below `K3_F45_WORK_PARENT` (default `/var/tmp`). | `--check` writes nothing. Otherwise reformats exactly BOOT_PART (ext4 `/boot`) and ROOT_PART (Btrfs `root`, `home`, `var`), copies the image preserving ownership, hard links, ACLs and extended attributes, rewrites only the new fstab, BLS and kernel command-line root references, optionally masks fwupd in the new root, extracts `Image-RELEASE` and creates the bootstrap DTB. No reboot, GPT, other-partition or U-Boot change. |
 | `make-bootstrap-dtb.sh PACKAGED_DTB OUTPUT_DTB` | Bash, Python 3, `dtc`, `fdtget`, `fdtput`; write access to OUTPUT's existing parent. | Adds empty `regulator-always-on` to the unique `dldo4` node and `/hub-reset`; publishes OUTPUT without overwriting, and only if the decompiled diff is exactly those two added lines. No fan or I2C change. |
-| `python3 -B verify-f45-bundle.py plan` / `release` / `bootstrap-release` / `image` / `check-rpm RPM` / `verify BUNDLE_DIR` | Python 3.10+ standard library; `rpm` for package checks. Ordinary user; read access only. | Reads only the adjacent public lock. Prints locked download rows, releases or the image record, or verifies packages without installing them. |
+| `python3 -B verify-f45-bundle.py [--build BUILD_ID] plan` / `release` / `requires-running` / `boot-dtb` / `builds` / `bootstrap-release` / `image` / `check-rpm RPM` / `verify BUNDLE_DIR` | Python 3.10+ standard library; `rpm` for package checks. Ordinary user; read access only. | Reads only the adjacent public lock. `--build` (default 11035571) selects the update for `plan`, `release`, `requires-running`, `boot-dtb`, `check-rpm` and `verify`; unknown builds are refused. Prints locked download rows, releases, the required running release(s), `bootstrap` or the packaged DTB path and SHA-256, every pinned build, or the image record, or verifies packages without installing them. |
 
 Fetch destinations and their `.partial` directories must not exist, and the
 parent must exist. Fetch failure cleans only its newly created partial
@@ -107,11 +132,13 @@ OUTPUT, `OUTPUT.partial` or `OUTPUT.payload.partial`; malformed input leaves
 no new output or owned partials. Neither helper uses a system scratch directory.
 
 The lock is the reviewed public trust input: preserve it with the scripts.
-Package directories must contain **exactly the five named RPM files**, with no
-extra files, subdirectories, links or self-declared `SHA256SUMS`. Verification
-rejects malformed/duplicate lock keys, wrong identities or URLs, symlinked
-or parent-traversing input paths, hardlinked inputs, changed bytes and
-mismatched RPM metadata.
+Package directories must contain **exactly the five named RPM files of the
+selected build**, with no extra files, subdirectories, links or
+self-declared `SHA256SUMS`; mixing the two builds' RPMs is refused.
+Verification rejects malformed/duplicate lock keys, wrong identities or URLs
+(including an altered upgrade project, required running kernel or boot-DTB
+path/hash), unknown builds, symlinked or parent-traversing input paths,
+hardlinked inputs, changed bytes and mismatched RPM metadata.
 Do not edit a checksum list to “accept” a package, or concurrently modify
 the trusted lock, helpers or RPM directory during use.
 
@@ -119,38 +146,45 @@ Transfer produces this layout, using a home-relative destination even when
 the account's home is not at a conventional path:
 
 ```text
-~/f45-copr-kernel-11035571/
+~/f45-copr-kernel-BUILD_ID/       # 11035571 by default; 11177969 for 7.3.0
     files/sources.lock.json
     scripts/verify-f45-bundle.py
     scripts/extract-riscv-zboot.sh
     scripts/k3-install-rpm-kernel.sh
     scripts/make-bootstrap-dtb.sh
-    rpms/                         # the five locked binary RPMs
+    rpms/                         # the selected build's five binary RPMs
 ```
 
 Transfer verifies that the remote user is `fedora`, keeps normal SSH host-key
 verification, accepts a hostname or IPv4 address (not an IPv6 literal), and
 refuses an existing final or `.partial` destination. It
 checks available space, stages the complete bundle, re-verifies RPMs against
-the transferred lock, then renames. A failed remote stage remains at
-`~/f45-copr-kernel-11035571.partial` for manual inspection; there is no broad
-remote cleanup or automatic installation.
+the transferred lock for the same build, then renames. A failed remote stage
+remains at `~/f45-copr-kernel-BUILD_ID.partial` for manual inspection; there
+is no broad remote cleanup or automatic installation. On success it prints
+the exact install command, adding `--build BUILD_ID` for a non-default build.
 
-The installer requires the pinned 7.2.7 F45 bootstrap to be running; it refuses
-the saved F44 boot path, other running kernels, a running or installed
-candidate, and existing candidate paths **before** calling DNF or writing
-system files. Verify the intended F45 root filesystem through the recipe as
-well: the kernel release alone does not identify the root. It uses local RPMs with
-repositories disabled and the install-only limit removed, not a distribution
-upgrade or replacement of the current kernel. It preserves the saved
-`/boot/dtb` link across the transaction, including DNF failure; a failed
-installation may still leave partial package/system changes and needs human
-inspection. It then creates the candidate's **separately named bootstrap
-DTB** for the temporary U-Boot route: it copies the running 7.2.7 bootstrap
-DTB only when the 7.2.7 and candidate packaged DTBs are byte-identical, and
-otherwise generates it with `make-bootstrap-dtb.sh`. If neither is possible
-it fails after installation and says to prepare the DTB before any boot. It
-prints the DTB decision, SHA-256 values and U-Boot load sizes. Inspect the
+The installer requires the selected build's pinned running kernel, as printed
+by `requires-running`: the 7.2.7 F45 bootstrap for 7.2.8, and 7.2.8 for
+7.3.0. It refuses the saved F44 boot path, other running kernels, a running
+or installed candidate, and existing candidate paths **before** calling DNF
+or writing system files. Verify the intended F45 root filesystem through the
+recipe as well: the kernel release alone does not identify the root. It uses
+local RPMs with repositories disabled and the install-only limit removed, not
+a distribution upgrade or replacement of the current kernel. It preserves the
+saved `/boot/dtb` link across the transaction, including DNF failure; a
+failed installation may still leave partial package/system changes and needs
+human inspection. For 7.2.8 it then creates the candidate's **separately named
+bootstrap DTB** for the temporary U-Boot route: it copies the running 7.2.7
+bootstrap DTB only when the 7.2.7 and candidate packaged DTBs are
+byte-identical, and otherwise generates it with `make-bootstrap-dtb.sh`. If
+neither is possible it fails after installation and says to prepare the DTB
+before any boot. For 7.3.0 it creates **no** bootstrap DTB and needs no `dtc`
+tools: `/boot/dtb-RELEASE/spacemit/k3-com260-ifx.dtb` must be a regular,
+non-symlink file with the lock's SHA-256, and the summary says U-Boot must
+load that packaged DTB. If it differs, the helper fails after installation
+and the kernel must not be booted until reviewed. Either way it prints the
+DTB decision, SHA-256 values and U-Boot load sizes. Inspect the
 generated initramfs for the actual root/storage drivers before any
 separately authorized boot.
 
@@ -178,20 +212,25 @@ python3 -B fedora-45/scripts/verify-f45-bundle.py --help
 ```
 
 The tests use individually cleaned regular-file fixtures beneath `tests/`,
-synthetic RPM bytes/lock hashes, mocked `curl`/`rpm`/SSH/rsync and denied
-system-write commands. They exercise binary-only fetch and failed-digest
-cleanup, refusal of incomplete/extra/tampered/unpinned inputs before any
-system or `/boot` access, running/installed candidate refusal, malformed
-zboot/atomic output, standalone extraction, relocation and quoted remote-home
-handling. Volume-population tests cover only argument, environment,
+synthetic RPM bytes/lock hashes for both pinned builds, mocked
+`curl`/`rpm`/SSH/rsync and denied system-write commands. They exercise
+binary-only fetch and failed-digest cleanup, refusal of
+incomplete/extra/tampered/unpinned inputs before any system or `/boot`
+access, running/installed candidate refusal, malformed zboot/atomic output,
+standalone extraction, relocation and quoted remote-home handling. Build
+selection tests cover fetching, verifying and transferring the 7.3.0 build
+into its own remote directory, refusal of mixed-build bundles, unknown
+builds and altered upgrade lock identities, and each build's required running
+kernel. Volume-population tests cover only argument, environment,
 acknowledgment and root refusals before any device access; bootstrap-DTB
 tests use the real `dtc` tools on a synthetic DTB and are skipped if those
-tools are absent. No real package installation, external network, host
+tools are absent. The installer's post-installation DTB handling needs root
+and a real `/boot`, so neither its bootstrap nor its packaged-DTB branch is
+covered by these tests. No real package installation, external network, host
 `/boot`, disk/mount operation, I2C, board access or boot is part of
 validation.
 
 These offline checks do not prove package signatures, online artifact
 availability, hardware compatibility or F45 guest behavior; the hardware
-result is the separate October 20 record. Read the canonical recipe and result
-limits, and leave attended hardware work and publication to the human
-operator.
+results are the separate October 20 and October 21 records. Read the canonical recipe and result limits, and leave
+attended hardware work and publication to the human operator.

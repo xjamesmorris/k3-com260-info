@@ -48,7 +48,8 @@ results explicitly archived; they are not F45 guest evidence or prerequisites.
 The two-partition volume installation was recorded end to end on 2026-10-20;
 other fresh-install adaptations (partition creation, other maintenance hosts,
 whole-disk imaging) stay visibly unverified until an attended result
-establishes them. Cooling-fan work is deferred to a separate update.
+establishes them. Fan control is covered only by the pinned 7.3.0 upgrade
+(COPR build 11177969) and its recorded single-boot result.
 Run the local validation gate before the relevant content or wiki push, and
 require explicit human publication approval. Neither a source commit nor a
 successful check authorizes a wiki push or new hardware result.

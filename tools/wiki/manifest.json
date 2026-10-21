@@ -80,7 +80,7 @@
   "fedora45": {
     "source": {
       "path": "fedora-45/files/sources.lock.json",
-      "blob": "9cf08440c1011d8b043d41a51abe1519b0a831b1"
+      "blob": "26c33646371c6996c5592127d43c46dee28abf2b"
     },
     "recipe": "Fedora-45-Recipe.md"
   },

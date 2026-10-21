@@ -273,11 +273,15 @@ class Checker:
         redirects = 0
         tried_get = False
         seen = set()
-        # Only an exact locked F45 COPR RPM may take the reviewed signed-S3 hop.
-        copr = (role == "critical-artifact" and isinstance(filename, str)
+        # Only an exact locked F45 COPR RPM may take the reviewed signed-S3 hop,
+        # and only through the Pulp content path of its own allowlisted project.
+        pulp = None
+        if (role == "critical-artifact" and isinstance(filename, str)
                 and isinstance(expected_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", expected_sha256)
-                and "/" not in filename and filename.endswith(".rpm")
-                and url == c.F45_COPR_PACKAGES + filename)
+                and "/" not in filename and filename.endswith(".rpm")):
+            pulp = next((c.f45_package_url(c.F45_PULP_CONTENT, project, filename)
+                         for project in c.F45_COPR_PROJECTS
+                         if url == c.f45_package_url(c.F45_COPR_RESULTS, project, filename)), None)
         signed = False
         while True:
             if signed:
@@ -333,7 +337,7 @@ class Checker:
                 c.require("location" in response.headers and redirects < MAX_REDIRECTS,
                           "missing redirect location or redirect limit exceeded")
                 redirected = urljoin(current, response.headers["location"])
-                if (copr and redirects == 1 and current == c.F45_PULP_PACKAGES + filename
+                if (pulp is not None and redirects == 1 and current == pulp
                         and redirected.startswith("https://" + COPR_S3_HOST + "/")):
                     copr_signed_object(redirected, expected_sha256)
                     signed = True

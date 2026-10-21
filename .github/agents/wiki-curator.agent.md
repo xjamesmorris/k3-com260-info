@@ -24,7 +24,8 @@ unverified adaptations (partition creation, other maintenance hosts,
 whole-disk imaging) from the archived F44 bootstrap, source-built KVM host, and
 persistent guest evidence. Host KVM initialization is not an F45 guest result.
 A newer release, accepted patch, or vendor claim does not establish a new
-local hardware result. Cooling-fan integration is deferred.
+local hardware result. Fan control is limited to the pinned 7.3.0 upgrade
+and its recorded single boot, which is not thermal qualification.
 
 Review one human-selected topic per invocation: Fedora/Omni images, a
 kernel/KVM/QEMU development change, toolchain/llama resources, hardware

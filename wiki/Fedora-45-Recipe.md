@@ -12,6 +12,8 @@ build or private bring-up files.
 into **two existing NVMe partitions** from a Linux maintenance host, then the
 7.2.7 bootstrap boot, first login, the exact COPR 7.2.8 update and three
 attended 7.2.8 boots, with everything else on the disk verified unchanged.
+**On October 21** the exact COPR 7.3.0 upgrade, which adds kernel fan
+control, was installed from 7.2.8 and booted once, attended.
 See the [result record](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md).
 Creating the partitions, other kinds of maintenance host and whole-disk
 imaging were **not** performed; see
@@ -29,6 +31,7 @@ results are not a compatibility claim for other carriers.
 | Image | `Fedora-Server-Host-Omni-45-20260923.2.riscv64.raw.xz`: community-contributed, **non-official Fedora RISC-V Beta** bytes, not a latest/final compose. |
 | Bootstrap kernel | `7.2.7-300.0.riscv64.omni.fc45.riscv64`, from that image. |
 | First kernel update | COPR build **11035571**, `7.2.8-300.0.riscv64.omni.fc45.riscv64`, exactly five locked binary RPMs. |
+| Fan-control upgrade | COPR build **11177969**, `7.3.0-65.1.riscv64.omni.fc45.riscv64`, five locked binary RPMs installed from 7.2.8 and booted with their packaged DTB. One attended boot (October 21). |
 | Tested installation | October 20: fresh F45 into existing **p4** (ext4 `/boot`) and **p5** (Btrfs root) of the K3's NVMe, made from an F44 maintenance host on p1–p3 of the same disk. The partition table, the F44 boot files and the Bianbu UFS ESP were byte-identical afterwards. |
 | Earlier result | October 19: side-by-side p4/p5 bring-up, before these public helpers existed; one bootstrap and three 7.2.8 smoke boots. |
 | Not performed | Creating the partitions, a workstation-enclosure or Bianbu maintenance host, whole-disk imaging, and any F45 guest workload. |
@@ -66,10 +69,13 @@ is neither a prerequisite nor F45 guest evidence.
 5. **Attended operation.** Every F45 boot is a manual U-Boot sequence typed
    at the serial console; nothing here changes the saved boot default.
 
-**Cooling-fan work is deferred.** The pinned kernels have no fan control:
-the fan ran at **full speed, loudly,** in every recorded F45 boot. Neither
-kernel exposed SoC thermal zones; no thermal protection, fail-safe,
-stress-test or unattended-operation guarantee is established.
+**Fan control needs the 7.3.0 upgrade.** The 7.2.7 and 7.2.8 kernels have
+no fan control: the fan ran at **full speed, loudly,** in every recorded boot
+of them, and they exposed no SoC thermal zones. After the
+[7.3.0 upgrade](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#upgrade-to-73-with-fan-control)
+the kernel sets the fan speed from the SoC temperature; one attended boot is
+recorded. No thermal protection, fail-safe, sustained-load or
+unattended-operation guarantee is established.
 
 ## Workstation, serial, and notation
 
@@ -344,8 +350,9 @@ historical bring-up.
 
 ### Check addresses before loading
 
-Power on with serial attached and interrupt U-Boot at
-`Autoboot in 3 seconds`. **Enter one short line, wait for the `=> ` prompt
+Power on with serial attached and press **`s`** at `Autoboot in 3 seconds`
+to stop at the U-Boot prompt; the recorded firmware did not stop for Space.
+**Enter one short line, wait for the `=> ` prompt
 to return, inspect the output, then enter the next.** Input sent while a
 command ran was lost in earlier work, and long chained lines were truncated.
 A continuation prompt is a stop condition. Never run `saveenv` or `env save`.
@@ -705,7 +712,7 @@ do not interrupt autoboot, the firmware boots whatever it booted before.
 sudo systemctl reboot
 ```
 
-Interrupt autoboot (power-cycle if no U-Boot banner appears), and repeat the
+Interrupt autoboot with `s` (power-cycle if no U-Boot banner appears), and repeat the
 whole sequence with the **7.2.8** release and the installer's sizes:
 
 ```text
@@ -780,7 +787,221 @@ hypervisor extension, Sv39x4 G-stage paging and 14-bit VMIDs. `/dev/kvm` is
 host initialization only, not a guest result. Stay attended, and repeat the
 reboot and sequence for each further boot.
 
-### Return to the saved default
+## Upgrade to 7.3 with fan control
+
+The 7.2.7 and 7.2.8 kernels leave the fan at full speed. COPR
+[build 11177969](https://copr.fedorainfracloud.org/coprs/g/forge-riscv-members/riscv64_omni_mainline_kernel/build/11177969/)
+in `@forge-riscv-members/riscv64_omni_mainline_kernel`,
+**7.3.0-65.1.riscv64.omni.fc45.riscv64**, includes the
+[CoM260 thermal-zone and fan-cooling change](https://gitlab.com/jmontleon/kernel-ark/-/merge_requests/1)
+merged into the Omni kernel's `fedora-7.3.y-riscv-omni.0` branch on
+October 20, 2026. Its kernel drives the board's CTF2301 fan controller
+(`lm63` driver) from the SoC temperature. Its packaged `k3-com260-ifx.dtb`
+also keeps `dldo4` always on and has an always-on USB hub supply instead of
+`/hub-reset`, so 7.3.0 boots **that packaged DTB**: no bootstrap DTB is
+made for it.
+
+Install it from the running, checked **7.2.8** host; the installer refuses
+any other running kernel. 7.2.7 and 7.2.8 stay installed beside it. The
+7.2.8 rules still apply: exactly five locked binary RPMs, digest and header
+checks, `NOKEY` (no verified publisher signature) and no SRPM download.
+These are fixed pins, not “the latest kernel”; do not substitute another
+build. **One attended 7.3.0 boot is recorded (October 21)**, against three
+for 7.2.8.
+
+### Fetch and transfer the 7.3.0 RPMs
+
+A checkout made before these pins existed lacks the build: update it first
+with `git -C "$HOME/k3-fedora-45/k3-com260-info" pull --ff-only` and review
+the changed lock and helpers. Then, on the workstation:
+
+```sh
+# Linux workstation: ordinary user; key login to K3_SSH must already work.
+export WORK="$HOME/k3-fedora-45"
+export F45="$WORK/k3-com260-info/fedora-45"
+export K3_SSH=fedora@k3-f45
+export FAN_RPMS="$WORK/f45-copr-kernel-11177969-rpms"
+(
+  set -euo pipefail
+  python3 -B "$F45/scripts/verify-f45-bundle.py" builds
+  "$F45/scripts/fetch-f45-copr-kernel.sh" --build 11177969 "$FAN_RPMS"
+  python3 -B "$F45/scripts/verify-f45-bundle.py" --build 11177969 \
+    verify "$FAN_RPMS"
+  ssh -o BatchMode=yes "$K3_SSH" 'test "$(id -un)" = fedora'
+  "$F45/scripts/transfer-f45-copr-kernel-to-k3.sh" --build 11177969 \
+    "$FAN_RPMS" "$K3_SSH"
+)
+```
+
+`builds` must list `11035571` and `11177969`. The transfer creates
+`~/f45-copr-kernel-11177969/` on the K3, with the same layout as for 7.2.8,
+re-verifies it there and prints the install command.
+
+### Install from the running 7.2.8
+
+On the K3, booted into 7.2.8 with the sequence above, check the system and
+the transferred bundle:
+
+```sh
+# K3 Fedora 7.2.8 host, ordinary fedora account.
+export UPDATE_KREL=7.2.8-300.0.riscv64.omni.fc45.riscv64
+export ROOT_UUID=REPLACE_WITH_F45_ROOT_UUID
+export BOOT_UUID=REPLACE_WITH_F45_BOOT_UUID
+(
+  set -euo pipefail
+  test "$(uname -r)" = "$UPDATE_KREL"
+  test "$(rpm -E '%fedora')" = 45
+  test "$(findmnt -nro UUID /)" = "$ROOT_UUID"
+  test "$(findmnt -nro UUID /boot)" = "$BOOT_UUID"
+  df -h / /boot "$HOME"
+  python3 -B "$HOME/f45-copr-kernel-11177969/scripts/verify-f45-bundle.py" \
+    --build 11177969 verify "$HOME/f45-copr-kernel-11177969/rpms"
+  sudo btrfs device stats /
+)
+```
+
+Then run the **installer only** with sudo, keeping its output:
+
+```sh
+# K3 Fedora host: package, module and boot-file writes; no reboot.
+(
+  set -o pipefail
+  sudo "$HOME/f45-copr-kernel-11177969/scripts/k3-install-rpm-kernel.sh" \
+    --build 11177969 "$HOME/f45-copr-kernel-11177969/rpms" 2>&1 |
+    tee "$HOME/k3-install-7.3.log"
+)
+```
+
+Before changing anything, the installer refuses a running kernel other than
+7.2.8, an already installed 7.3.0 and pre-existing 7.3.0 paths. After DNF it
+requires `/boot/dtb-7.3.0-65.1.riscv64.omni.fc45.riscv64/spacemit/k3-com260-ifx.dtb`
+to have the lock's SHA-256 and creates **no** bootstrap DTB; if the DTB
+differs it stops, and that kernel must not be booted until reviewed.
+`/boot/dtb` still points at 7.2.7. The recorded summary reported DNF
+`Complete!`, `Boot DTB: packaged spacemit/k3-com260-ifx.dtb; matches the
+public lock` and these U-Boot load sizes:
+
+| File | Recorded bytes |
+| --- | ---: |
+| `dtb-7.3.0-65.1.riscv64.omni.fc45.riscv64/spacemit/k3-com260-ifx.dtb` | 47,633 (`0xba11`) |
+| `Image-7.3.0-65.1.riscv64.omni.fc45.riscv64` | 63,361,024 (`0x3c6d000`) |
+| `initramfs-7.3.0-65.1.riscv64.omni.fc45.riscv64.img` | 53,388,814 (`0x32ea60e`) |
+
+The DTB and Image are expected to match; the initramfs is generated on your
+system, so use your own summary's size. With these sizes the three load
+ranges still do not overlap at the recorded addresses.
+
+### Boot 7.3.0 with its packaged DTB
+
+With serial open, reboot:
+
+```sh
+# K3 F45 7.2.8: an explicit, attended reboot.
+sudo systemctl reboot
+```
+
+In the recorded run the console stopped at `reboot: Restarting system`
+until the operator pressed reset; if no U-Boot banner follows, press reset
+or power-cycle. Stop autoboot with `s`, then enter:
+
+```text
+# U-Boot: one line per returned prompt, with checks between lines.
+printenv fdt_addr_r kernel_addr_r ramdisk_addr_r
+setenv bootpart REPLACE_WITH_BOOT_PARTITION_NUMBER
+setenv bootrel 7.3.0-65.1.riscv64.omni.fc45.riscv64
+setenv rootuuid REPLACE_WITH_F45_ROOT_UUID
+nvme scan
+fsuuid nvme 0:${bootpart}
+load nvme 0:${bootpart} ${fdt_addr_r} dtb-${bootrel}/spacemit/k3-com260-ifx.dtb
+load nvme 0:${bootpart} ${kernel_addr_r} Image-${bootrel}
+load nvme 0:${bootpart} ${ramdisk_addr_r} initramfs-${bootrel}.img
+setenv initrd_size ${filesize}
+printenv initrd_size
+setenv bootargs root=UUID=${rootuuid}
+setenv bootargs "${bootargs} rootflags=subvol=root"
+setenv bootargs "${bootargs} clk_ignore_unused"
+setenv bootargs "${bootargs} console=ttyS0,115200n8"
+printenv bootrel bootargs
+```
+
+**Besides `bootrel`, only the DTB line differs from 7.2.8:** it loads the
+7.3.0 directory's packaged `k3-com260-ifx.dtb`. There is no 7.3.0
+`k3-com260-bootstrap.dtb`, and the 7.2.x DTBs have no thermal zones or fan
+cooling map. Apply the same checks as before: unchanged addresses, the
+link-up report, your `/boot` UUID, each `bytes read` equal to the
+installer's summary (`47633 bytes read` for the DTB), `initrd_size` equal
+to its hexadecimal initramfs size and the exact `bootargs`. Then:
+
+```text
+# U-Boot: temporary boot; never save the environment.
+booti ${kernel_addr_r} ${ramdisk_addr_r}:${initrd_size} ${fdt_addr_r}
+```
+
+Every later F45 boot repeats this sequence; the saved default is unchanged.
+
+### Check fan control
+
+Run the
+[updated-system checks](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#check-the-actual-updated-system)
+with `UPDATE_KREL=7.3.0-65.1.riscv64.omni.fc45.riscv64`, then:
+
+```sh
+# K3 Fedora 7.3.0 host, as fedora (serial or SSH); read-only.
+(
+  set -euo pipefail
+  test "$(uname -r)" = 7.3.0-65.1.riscv64.omni.fc45.riscv64
+  zones=0
+  for zone in /sys/class/thermal/thermal_zone*; do
+    zones=$((zones + 1))
+    echo "$(cat "$zone/type"): $(( $(cat "$zone/temp") / 1000 )) C, $(cat "$zone/policy")"
+  done
+  test "$zones" -eq 7
+  fan=
+  for dev in /sys/class/thermal/cooling_device*; do
+    if [ "$(cat "$dev/type")" = ctf2301 ]; then fan=$dev; fi
+  done
+  test -n "$fan"
+  echo "fan cooling state $(cat "$fan/cur_state") of $(cat "$fan/max_state")"
+  for mon in /sys/class/hwmon/hwmon*; do
+    if [ "$(cat "$mon/name")" = ctf2301 ]; then
+      echo "CTF2301 pwm1 $(cat "$mon/pwm1"), fan1 $(cat "$mon/fan1_input") rpm"
+    fi
+  done
+  lsmod | grep -E '^(lm63|k3_tsensor) '
+)
+```
+
+Seven zones, a `ctf2301` cooling device and both modules are the
+checkpoint. Leave the fan to the kernel: do not run a userspace fan-control
+script or daemon against the same controller.
+
+The recorded boot reached the login prompt 28 seconds after `booti`,
+finished startup in 25.0 seconds, had DHCPv4 at 24.3 seconds and was
+`running` with no failed units and no FAT mounts. It registered the zones
+`top`, `vpu`, `gpu` and `cluster0`–`cluster3`, all `step_wise`. Only
+`cluster0` drives the fan: an active trip at 35 °C and passive trips at 40,
+50, 60 and 70 °C, each with 5 °C hysteresis, select fan-state ranges 0–50,
+64–75, 102–128, 179–204 and 255.
+
+| Condition (October 21) | `cluster0` | Fan state | Fan speed |
+| --- | ---: | ---: | ---: |
+| Idle after boot | 47–48 °C | 78 | about 3,840 rpm |
+| Eight busy threads for 2 minutes | up to 58 °C | 105 within 5 s | about 4,890 rpm |
+| 4 minutes after the load | 47–48 °C | still 105 | about 4,890 rpm |
+
+The operator found it much quieter than 7.2.x at idle and audibly faster
+under load. It stayed at 105 after the load, consistent with the 50 °C
+trip's hysteresis: `cluster0` did not cool below 45 °C. The 60 and 70 °C
+trips were not reached. USB3 also changed: the `81400000.usb3` controller
+probed and a USB 3.0 hub enumerated at 5 Gb/s; no USB transfer was tested.
+The kernel logged some warnings not seen with 7.2.8, such as
+`cma: Failed to reserve 64 MiB` and
+`irq_aclint_sswi: unable to create muxed IPIs`; see the
+[result record](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md).
+One boot and a two-minute load are not a sustained-load, fan-failure or
+unattended-use qualification.
+
+## Return to the saved default
 
 To leave F45, reboot or power-cycle **without** interrupting autoboot: the
 unchanged saved environment boots the previous system (recorded: F44 on the
@@ -813,8 +1034,8 @@ Virtualization is optional:
 separates F45 host initialization from the archived F44 guest workload
 results. `/dev/kvm` does not establish a QEMU or guest version, launch,
 workload, CPU filter, interrupt mode, guest network or persistence result on
-F45. There is no F45 guest-launch recipe here. Fan control and thermal
-qualification remain deferred to a separately reviewed update.
+F45. There is no F45 guest-launch recipe here. Fan control comes from the
+7.3.0 upgrade above; no sustained-load thermal qualification has been done.
 
 ## Unverified alternatives
 
@@ -840,13 +1061,13 @@ not as tested instructions.
 
 ## Technical notes
 
-**Applies to:** 8 GiB SpacemiT K3-CoM260 on the recorded Firefly carrier, PCB revision unknown; Linux workstation and Linux maintenance host; two existing NVMe partitions populated by the public helper; Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; pinned F45 Beta 7.2.7 bootstrap and COPR 11035571 7.2.8 host.
+**Applies to:** 8 GiB SpacemiT K3-CoM260 on the recorded Firefly carrier, PCB revision unknown; Linux workstation and Linux maintenance host; two existing NVMe partitions populated by the public helper; Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; pinned F45 Beta 7.2.7 bootstrap, COPR 11035571 7.2.8 host and COPR 11177969 7.3.0 fan-control upgrade.
 
-**Evidence:** Recorded public [F45 results](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md), [artifact lock](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/files/sources.lock.json) and [helper contract](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/README.md); partition creation, other maintenance hosts and whole-disk imaging are untested.
+**Evidence:** Recorded public [F45 results](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md), [artifact lock](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/files/sources.lock.json) and [helper contract](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/README.md); partition creation, other maintenance hosts and whole-disk imaging are untested, and the 7.3.0 upgrade has one attended boot.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-21.
 
-**Hardware observation:** 2026-10-20 fresh installation into existing p4/p5 partitions from an F44 maintenance host on the same NVMe: one 7.2.7 bootstrap boot, the exact COPR 7.2.8 install and three attended 7.2.8 boots, with the partition table, F44 boot files and UFS ESP unchanged; 2026-10-19 side-by-side bring-up. No F45 guest workload was tested.
+**Hardware observation:** 2026-10-21 the exact COPR 7.3.0 upgrade installed from 7.2.8 and one attended 7.3.0 boot with kernel fan control and a two-minute load; 2026-10-20 fresh installation into existing p4/p5 partitions from an F44 maintenance host on the same NVMe: one 7.2.7 bootstrap boot, the exact COPR 7.2.8 install and three attended 7.2.8 boots, with the partition table, F44 boot files and UFS ESP unchanged; 2026-10-19 side-by-side bring-up. No F45 guest workload was tested.
 
 **Destructive operations:** Reformats the two selected partitions, destroying their contents; writes the new F45 fstab, BLS entries, kernel command line, fwupd masks, SSH keys, RPM database, module tree and boot files. No partition-table, other-partition, firmware or saved U-Boot environment change. Reboots and temporary U-Boot selections require operator control; this is not an unattended-operation guarantee.
 

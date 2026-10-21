@@ -18,7 +18,9 @@ installs the pinned image into **two existing NVMe partitions** from a Linux
 maintenance host, using the public helpers; that route was performed end to
 end. Creating the partitions, other kinds of maintenance host and
 whole-disk imaging remain **unverified**. New F45 starters do not need to
-install or shrink F44 first.
+install or shrink F44 first. The route ends with the pinned
+[7.3.0 fan-control upgrade](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#upgrade-to-73-with-fan-control),
+booted once on October 21; until then the fan runs at full speed.
 
 **Start with [Hardware and setup](https://github.com/xjamesmorris/k3-com260-info/wiki/Hardware-and-Setup).**
 If your hardware and serial console already match, go to
@@ -34,13 +36,15 @@ helpers: F45 went into existing partitions p4 (ext4 `/boot`) and p5 (Btrfs
 root) of the K3's NVMe, from a Fedora 44 maintenance host on p1–p3 of the
 same disk. The saved F44 boot path was retained. Afterwards the partition
 table, all 116 F44 `/boot` and `/boot/efi` files and the raw Bianbu UFS ESP
-were byte-identical to the before-state.
+were byte-identical to the before-state. On **October 21** the pinned 7.3.0
+upgrade, installed from 7.2.8, added kernel fan control in one attended boot.
 
 | Stage | Recorded stack | Result and boundary |
 | --- | --- | --- |
 | F45 fresh installation | Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; non-official community Beta image `Fedora-Server-Host-Omni-45-20260923.2.riscv64.raw.xz`; `populate-f45-volumes.sh`, read-only `--check` first | Two existing partitions reformatted and populated, with no partition-table change. The helper extracted the raw Image, created a bootstrap DTB keeping both `dldo4` and `hub-reset` enabled, and masked fwupd offline before first boot. |
 | F45 bootstrap | `7.2.7-300.0.riscv64.omni.fc45.riscv64`, from that image | One attended boot, login prompt 24 seconds after `booti`; first serial login as `fedora`, working sudo, and an SSH host key verified against serial. |
 | F45 packaged update | COPR build `11035571`; `7.2.8-300.0.riscv64.omni.fc45.riscv64`, installed beside 7.2.7 | Exact five-RPM install; the installer also created the separately named 7.2.8 bootstrap DTB. Three attended boots: login about 22 seconds after `booti`, startup 22.9–23.5 seconds, `running`, no failed units, no FAT mounts. Host KVM initialization only, not a guest result. |
+| F45 fan-control upgrade | COPR build `11177969`; `7.3.0-65.1.riscv64.omni.fc45.riscv64`, installed beside 7.2.8 | Exact five-RPM install from 7.2.8, booted with its packaged DTB. One attended boot (October 21): seven thermal zones and kernel fan control, much quieter at idle and faster under a two-minute load; USB3 hub enumerated. Not a thermal qualification. |
 
 The earlier **October 19** side-by-side bring-up on the same p4/p5, made
 before the public helpers existed, remains recorded: one bootstrap boot and
@@ -64,14 +68,15 @@ factory flashing is not a default setup step.
 or persistent shutdown/resume was recorded. KVM is optional, and `/dev/kvm`
 or an AIA host banner is not guest-workload proof.
 
-**Open operating limits:** the fan runs at full speed, loudly, under the
-pinned kernels; USB3 probing remained deferred (USB2 only) and no SoC
-thermal zones were exposed. DHCPv4 arrived within about 23–26 seconds in
-all four October 20 F45 boots, but one October 19 boot took about
-7.5 minutes, and F44 took about 145 seconds after switching back.
-**All cooling-fan work is deferred.** No thermal-protection or unattended-use
-assurance is made. Display, suspend, VFIO, long-duration stability, other
-carriers, UEFI, SD-root, and newer inputs remain outside this result. See
+**Open operating limits:** under 7.2.7 and 7.2.8 the fan runs at full
+speed, loudly, USB3 probing stays deferred (USB2 only) and no SoC thermal
+zones are exposed; the one recorded 7.3.0 boot changed all three. DHCPv4
+arrived within about 23–26 seconds in all four October 20 F45 boots, but one
+October 19 boot took about 7.5 minutes, and F44 took about 145 seconds
+after switching back. No thermal-protection or unattended-use assurance is
+made, even with 7.3.0 fan control. Display, suspend, VFIO, long-duration
+stability, other carriers, UEFI, SD-root, and newer inputs remain outside
+this result. See
 [Diagnostics and known limits](https://github.com/xjamesmorris/k3-com260-info/wiki/Diagnostics-and-Known-Limits)
 before planning an experiment. There is no production or hostile-guest
 isolation claim.
@@ -103,11 +108,11 @@ and [Status and sources](https://github.com/xjamesmorris/k3-com260-info/wiki/Sta
 
 **Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Firefly carrier with unknown PCB revision; Linux workstation and maintenance host, two existing NVMe partitions and Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot.
 
-**Evidence:** Public October 20 and October 19 F45 host results and pins, plus the preserved September 25 F44 archive. External Omni/Pico-ITX reference context retains its September 29 source review; it was not refreshed for this local route review.
+**Evidence:** Public October 21, 20 and 19 F45 host results and pins, plus the preserved September 25 F44 archive. External Omni/Pico-ITX reference context retains its September 29 source review; it was not refreshed for this local route review.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-21.
 
-**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 side-by-side F45 bootstrap and three pre-fan updated-host smoke boots; 2026-09-25 archived F44 stages. No F45 guest workload or new test for this page.
+**Hardware observation:** 2026-10-21 one attended boot of the COPR 7.3.0 fan-control upgrade installed from 7.2.8; 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 side-by-side F45 bootstrap and three pre-fan updated-host smoke boots; 2026-09-25 archived F44 stages. No F45 guest workload or new test for this page.
 
 **Destructive operations:** None on this page. The installation reformats the two selected NVMe partitions; factory recovery erases NOR and all UFS, including the saved environment.
 
