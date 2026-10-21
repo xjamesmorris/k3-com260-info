@@ -58,13 +58,20 @@ Leave publication to the human author as required by the LLM policy.
 
 Canonical public pages live in `wiki/`. Read the
 [wiki maintenance contract](tools/wiki/README.md) before editing them.
-The historical `k3-com260-fedora-howto/` is protected; its wiki reference is
-generated, not a second hand-maintained installation recipe.
+The historical `k3-com260-fedora-howto/` is protected; its Fedora 44 wiki
+reference is generated, not a second hand-maintained installation recipe.
+`wiki/Fedora-45-Recipe.md` is the maintained Fedora 45 command source;
+`fedora-45/` supplies its public helpers, pins, and bounded result record.
 
-Document only the Linux-workstation procedures actually performed. Keep
-bootstrap, source-built host, and persistent guest results separate. Other
-platforms, newer images and unperformed experiments may be linked as
-resources, not presented as tested walkthroughs.
+Keep the Fedora 45 packaged-host results separate from the archived Fedora 44
+bootstrap, source-built host, and persistent guest results. Document performed
+Linux-workstation procedures accurately. The tested F45 route is the
+two-partition volume installation recorded on 2026-10-20; other adapted
+routes (partition creation, other maintenance hosts, whole-disk imaging) must
+remain visibly unverified until an attended result is recorded. Host KVM
+initialization is not an F45 guest result. Do not turn other
+platforms, newer images, or unperformed experiments into tested walkthroughs.
+Cooling-fan work is deferred and is not part of the F45 documentation update.
 
 Validate the exact proposed snapshot before a push. Content-repository and
 wiki pushes are separate human-authorized actions; never enable the wiki,

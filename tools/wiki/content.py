@@ -30,6 +30,16 @@ CRITICAL_SOURCES = {
     "fedora-guest": (PROTECTED_PATH + "/scripts/prepare-riscv-fedora-guest.sh",
                      "412f9036aced7348dc70a4e86727f7d8a57cfe83", ".qcow2", 1),
 }
+F45_RECIPE = "Fedora-45-Recipe.md"
+F45_SOURCES = "fedora-45/files/sources.lock.json"
+F45_SOURCE_BLOBS = frozenset({"9cf08440c1011d8b043d41a51abe1519b0a831b1"})
+F45_PACKAGES = ("kernel", "kernel-core", "kernel-modules-core",
+                "kernel-modules", "kernel-modules-extra")
+F45_COPR_PACKAGES = ("https://download.copr.fedorainfracloud.org/results/"
+                     "@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/")
+# COPR serves those URLs through Red Hat's Pulp content service; see httpcheck.
+F45_PULP_PACKAGES = ("https://packages.redhat.com/api/pulp-content/public-copr/"
+                     "@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/")
 MANIFEST = "tools/wiki/manifest.json"
 EXCEPTIONS = "tools/wiki/link-exceptions.json"
 LOCK = "tools/wiki/requirements.txt"
@@ -506,12 +516,78 @@ def critical_artifacts(snapshot: Snapshot, entries: Any) -> None:
             require(source.count(entry["checksum_url"]) == 1, "guest checksum metadata source changed")
 
 
+def fedora45_artifacts(snapshot: Snapshot, declaration: Any) -> list[dict[str, str]]:
+    object_keys(declaration, {"source", "recipe"})
+    object_keys(declaration["source"], {"path", "blob"})
+    pin = declaration["source"]["blob"]
+    require(declaration["source"]["path"] == F45_SOURCES
+            and isinstance(pin, str) and pin in F45_SOURCE_BLOBS
+            and declaration["recipe"] == F45_RECIPE,
+            "Fedora 45 inputs must use the reviewed public source lock and recipe")
+    data = snapshot.read(F45_SOURCES, page=True)
+    require(blob_id(data) == pin, "Fedora 45 source lock changed; review its new pins")
+    source = load_json(data, "Fedora 45 sources")
+    object_keys(source, {"schema", "recorded_on", "image", "kernel"})
+    require(type(source["schema"]) is int and source["schema"] == 1,
+            "unsupported Fedora 45 source lock schema")
+    require(isinstance(source["recorded_on"], str)
+            and re.fullmatch(r"\d{4}-\d{2}-\d{2}", source["recorded_on"]),
+            "Fedora 45 source lock needs its recorded date")
+    image = source["image"]
+    object_keys(image, {"url", "checksum_url", "filename", "sha256", "kernel_release"})
+    require(isinstance(image["filename"], str) and re.fullmatch(
+        r"Fedora-Server-Host-Omni-45-\d{8}\.\d+\.riscv64\.raw\.xz", image["filename"]),
+        "invalid Fedora 45 bootstrap filename")
+    require(isinstance(image["url"], str), "invalid Fedora 45 image URL")
+    image_url = urlsplit(image["url"])
+    require(image_url.scheme == "https" and image_url.netloc == "dl.fedoraproject.org"
+            and not image_url.query and not image_url.fragment
+            and image_url.path.startswith("/pub/alt/risc-v/")
+            and image_url.path.endswith("/Server/riscv64/images/" + image["filename"])
+            and image["checksum_url"] == image["url"] + ".sha256",
+            "Fedora 45 image/checksum must use the exact official artifact")
+    safe_path(image_url.path.removeprefix("/"))
+    kernel = source["kernel"]
+    object_keys(kernel, {"build_id", "kernel_release", "source_rpm", "source_git_commit",
+                         "primary_metadata_sha256", "packages"})
+    for release in (image["kernel_release"], kernel["kernel_release"]):
+        require(isinstance(release, str) and re.fullmatch(
+            r"\d+\.\d+\.\d+-[A-Za-z0-9._+-]+\.omni\.fc45\.riscv64", release),
+            "invalid Fedora 45 Omni kernel release")
+    require(type(kernel["build_id"]) is int and kernel["build_id"] > 0
+            and kernel["source_rpm"] == "kernel-" + kernel["kernel_release"].removesuffix(".riscv64") + ".src.rpm"
+            and kernel["source_git_commit"] is None,
+            "Fedora 45 COPR build identity or unproven source binding changed")
+    require(isinstance(kernel["primary_metadata_sha256"], str)
+            and re.fullmatch(r"[0-9a-f]{64}", kernel["primary_metadata_sha256"]),
+            "invalid Fedora 45 repository metadata identity")
+    packages = kernel["packages"]
+    require(isinstance(packages, list) and len(packages) == len(F45_PACKAGES),
+            "Fedora 45 must enumerate all five recorded binary RPMs")
+    for package, name in zip(packages, F45_PACKAGES):
+        object_keys(package, {"name", "filename", "url", "sha256"})
+        require(package["name"] == name
+                and package["filename"] == name + "-" + kernel["kernel_release"] + ".rpm"
+                and package["url"] == F45_COPR_PACKAGES + package["filename"],
+                "Fedora 45 RPM inventory or origin changed")
+    for artifact in (image, *packages):
+        require(isinstance(artifact["sha256"], str)
+                and re.fullmatch(r"[0-9a-f]{64}", artifact["sha256"]),
+                "invalid Fedora 45 artifact SHA256")
+    recipe = text(snapshot.read("wiki/" + F45_RECIPE, page=True))
+    require(image["url"] in recipe and image["sha256"] in recipe,
+            "Fedora 45 recipe does not retain the reviewed image URL and hash")
+    return [image, *packages]
+
+
 def manifest(snapshot: Snapshot) -> dict[str, Any]:
     value = load_json(snapshot.read(MANIFEST, page=True), "manifest")
+    require(isinstance(value, dict) and type(value.get("schema")) is int
+            and value["schema"] in (1, 2), "unsupported manifest schema")
+    extra = {"fedora45"} if value["schema"] == 2 else set()
     object_keys(value, {"schema", "repository", "source_branch", "wiki_repository", "wiki_url",
                         "baseline_commit", "protected", "pages", "recipe", "bootstrap_home",
-                        "validation_exceptions", "critical_artifacts"})
-    require(value["schema"] == 1, "unsupported manifest schema")
+                        "validation_exceptions", "critical_artifacts"} | extra)
     for key, expected in (("repository", SOURCE_URL), ("source_branch", SOURCE_BRANCH),
                           ("wiki_repository", WIKI_REPO), ("wiki_url", WIKI_URL),
                           ("baseline_commit", BASELINE)):
@@ -532,11 +608,14 @@ def manifest(snapshot: Snapshot) -> dict[str, Any]:
         require(isinstance(page["title"], str) and re.fullmatch(r"[A-Za-z0-9 ,()/-]+", page["title"]),
                 "invalid navigation title")
     require("home.md" in seen, "manifest must include Home.md")
+    require(value["schema"] == 2 or F45_RECIPE.casefold() not in seen,
+            "Fedora 45 recipe requires the complete schema-2 input inventory")
     recipe = value["recipe"]
     object_keys(recipe, {"source", "target", "blob", "sha256", "title", "section",
                          "links", "checkout", "navigation"})
+    recipe_group = "Start" if value["schema"] == 1 else "Resources"
     require((recipe["source"], recipe["target"], recipe["blob"], recipe["sha256"], recipe["section"])
-            == (RECIPE_PATH, "Fedora-Recipe.md", RECIPE_BLOB, RECIPE_SHA256, "Start"),
+            == (RECIPE_PATH, "Fedora-Recipe.md", RECIPE_BLOB, RECIPE_SHA256, recipe_group),
             "generated recipe source, destination or identity changed")
     require(isinstance(recipe["title"], str) and re.fullmatch(r"[A-Za-z0-9 ,()/-]+", recipe["title"]),
             "invalid recipe navigation title")
@@ -555,8 +634,9 @@ def manifest(snapshot: Snapshot) -> dict[str, Any]:
         "new": 'export HOWTO="$WORK/k3-com260-info/k3-com260-fedora-howto"',
         "count": 1,
     }, "checkout transform must be the single approved root-README correction")
+    archive = "Install-Fedora" if value["schema"] == 1 else "Fedora-44-Archive"
     require(recipe["navigation"] == {
-        "installation": WIKI_URL + "/Install-Fedora",
+        "installation": WIKI_URL + "/" + archive,
         "recovery": WIKI_URL + "/Console-and-Recovery#factory-recovery-only-when-needed",
         "home": WIKI_URL + "/Home",
     }, "generated recipe navigation must use the maintained wiki authorities")
@@ -571,6 +651,15 @@ def manifest(snapshot: Snapshot) -> dict[str, Any]:
             "invalid bootstrap Home bytes")
     require(isinstance(value["validation_exceptions"], list), "invalid validation exceptions")
     critical_artifacts(snapshot, value["critical_artifacts"])
+    if value["schema"] == 2:
+        require({F45_RECIPE.casefold(), "fedora-44-archive.md"} <= seen,
+                "Fedora 45 recipe and Fedora 44 archive must remain in the page inventory")
+        for target, section, kind in ((F45_RECIPE, "Start", "procedure"),
+                                      ("Fedora-44-Archive.md", "Resources", "reference")):
+            require(any(page["target"] == target and page["section"] == section
+                        and page["kind"] == kind for page in value["pages"]),
+                    "Fedora 45 start and Fedora 44 archive page roles changed")
+        fedora45_artifacts(snapshot, value["fedora45"])
     return value
 
 
@@ -600,14 +689,17 @@ def render(snapshot: Snapshot) -> tuple[dict[str, Any], dict[str, bytes]]:
         text(data, "page")
     mode = "WORKTREE PREVIEW - NOT FOR PUBLICATION. " if snapshot.worktree else ""
     source_link = f"{REPO_WEB}/blob/{snapshot.commit}/{RECIPE_PATH}"
+    historical_label = "Historical reference" if m["schema"] == 1 else "Archived Fedora 44 reference"
+    checkout_note = ("the correction already documented in the repository README"
+                     if m["schema"] == 1 else "the approved historical checkout-path correction")
     banner = (
         "<!-- Generated; do not edit. SPDX-License-Identifier: GPL-2.0-only -->\n\n"
-        "> **Historical reference.** " + mode
+        "> **" + historical_label + ".** " + mode
         + "This is the retained September 25, 2026 bring-up record, not a new hardware result.\n"
         f"> [Canonical source at {snapshot.commit}]({source_link}). "
         "The original snapshot table below supplies this reference's hardware and stack metadata.\n"
         "> Only the manifest-enumerated Markdown links and the single `HOWTO` checkout path "
-        "(the correction already documented in the repository README) are adapted. "
+        f"({checkout_note}) are adapted. "
         "All other source bytes, including commands and limitations, are retained.\n"
         f"> [Installation orientation]({m['recipe']['navigation']['installation']})"
         f" | [Current recovery authority]({m['recipe']['navigation']['recovery']})"
@@ -618,7 +710,7 @@ def render(snapshot: Snapshot) -> tuple[dict[str, Any], dict[str, bytes]]:
     for group in ("Start", "Operate", "Develop", "Resources"):
         navigation.append(f"### {group}\n")
         pages = [p for p in m["pages"] if p["section"] == group]
-        if group == "Start":
+        if group == m["recipe"]["section"]:
             pages.append(m["recipe"])
         navigation.extend(f"- [{p['title']}]({WIKI_URL}/{p['target'][:-3]})\n" for p in pages)
         navigation.append("\n")

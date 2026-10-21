@@ -10,9 +10,18 @@ evidence, understands the change, checks provenance, and decides whether and
 where to send it. Handling incoming contributions to this wiki/repository is
 deferred; helping readers contribute to the projects below is not.
 
+New starters follow the
+[F45 installation guide](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora).
+The worked examples below are **preserved historical F44-era preparation**,
+accessible from the [F44 archive](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-44-Archive),
+not F45 installation requirements. The
+[F45 public result](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
+records host KVM initialization, not a guest report. This route-context
+update does not refresh the destination-policy review dated September 27.
+
 ## Worked preparation: dldo4 RFC
 
-The existing
+The historical
 [public RFC patch](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/dldo4/0001-riscv-dts-spacemit-k3-com260-keep-dldo4-enabled.patch)
 is a concrete example of turning bring-up into a reviewable question.
 It is retained from James Morris's
@@ -29,8 +38,8 @@ not evidence that a patch was emailed or accepted.
 | Missing reproduction detail | The RFC does not embed the matched test's complete configuration, tool versions, or full boot artifacts. Those gaps must not be filled with assumptions. No checkpatch or DT-schema pass is claimed in its text. |
 | Authorship and submission state | The [bundle provenance](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/README.md#patch-origins-and-status) records an unsubmitted RFC, no posted Message-ID, `Assisted-by: LLM`, and no human `Signed-off-by`. Preserve existing authorship and trailers. |
 
-**Do not merge this with the earlier bootstrap workaround.** The Omni 7.1.5
-bootstrap used both `dldo4` and `hub-reset`. The later
+**Do not merge this with the earlier F44 bootstrap workaround.** The Omni 7.1.5
+bootstrap used both `dldo4` and `hub-reset`. The later F44
 `7.3.0-rc4-k3-kvm-host-a1` has a different public source pin, 14-patch bundle,
 and [retained configuration](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/config.seed).
 That later successful build is useful integration evidence, but its config
@@ -49,7 +58,7 @@ explain the source/build and review context.
 
 ## Worked preparation: Fedora guest report
 
-Use the September 25
+Use the archived F44 September 25
 [public Fedora record](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md)
 to prepare an **integration report for Fedora RISC-V**, not a claim that a
 new upstream bug has been found. A success baseline is useful; it is not a
@@ -63,8 +72,10 @@ bug reproducer or a QEMU patch submission.
 | Bounded observation | Full Fedora interactive guest operation is recorded; AIA is described as the tested alternative after clean PLIC shutdown. The recipe describes root, virtualization, CPU-count, interrupt, and SSH checks. It does not publish every check's raw output separately for each mode. |
 | Unknowns to retain | No per-mode test counts, disk-integrity benchmark, long-duration result, migration/VFIO result, or clean-current-upstream comparison is supplied. Historical stages ran on hardware; the portable bundle was not rerun end to end. |
 
-The executable steps remain in
-[the canonical guest section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#prepare-and-run-the-persistent-guest).
+The executable steps remain solely in
+[the archived F44 guest section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#prepare-and-run-the-persistent-guest).
+Its CPU/workload checks and persistence statements must not be transferred
+to F45.
 For a new failure, prepare expected versus actual behavior, the first failing
 stage, exact package/source identities, and a small public-safe reproducer.
 Use the [diagnostic report guidance](https://github.com/xjamesmorris/k3-com260-info/wiki/Diagnostics-and-Known-Limits).
@@ -137,7 +148,7 @@ creation, email, and publication remain human-controlled actions.
 
 **Applies to:** Preparing Fedora, Linux/RISC-V, KVM, QEMU, toolchain, and llama.cpp contributions from public K3-CoM260/Firefly evidence.
 
-**Evidence:** Worked preparation examples from the public dldo4 RFC and Fedora guest record; official project routes and policies for other work.
+**Evidence:** Preserved historical preparation examples from the public dldo4 RFC and F44 guest record; official routes/policies reviewed September 27. F45 route links/context were locally reconciled against the public host record on October 19, not a new policy check.
 
 **Source review:** 2026-09-27.
 

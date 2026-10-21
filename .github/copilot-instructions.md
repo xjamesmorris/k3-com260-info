@@ -42,6 +42,13 @@ on the maintainer's machine.
 its manifest, generated historical recipe, validation and publication
 workflow. Preserve `k3-com260-fedora-howto/` unchanged. The GitHub Wiki is a
 separate checked projection, not an independently edited source of truth.
+`wiki/Fedora-45-Recipe.md` is the maintained F45 command source, backed by
+`fedora-45/` helpers, pins, and results. Keep the retained F44 recipe and guest
+results explicitly archived; they are not F45 guest evidence or prerequisites.
+The two-partition volume installation was recorded end to end on 2026-10-20;
+other fresh-install adaptations (partition creation, other maintenance hosts,
+whole-disk imaging) stay visibly unverified until an attended result
+establishes them. Cooling-fan work is deferred to a separate update.
 Run the local validation gate before the relevant content or wiki push, and
 require explicit human publication approval. Neither a source commit nor a
 successful check authorizes a wiki push or new hardware result.

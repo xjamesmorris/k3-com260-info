@@ -2,10 +2,11 @@
 
 # Hardware and setup
 
-This page is for readers evaluating or preparing the recorded Firefly-sold
-8 GiB K3-CoM260 kit before firmware or disk work. It explains how to
+This page is for readers evaluating or preparing the Firefly-sold
+8 GiB K3-CoM260 kit for the F45-first documentation route. It explains how to
 distinguish the module from its carrier, check the dated recall and power
-references, and assemble the Linux workstation, serial, and NVMe prerequisites.
+references, and assemble the Linux workstation, maintenance-host, serial,
+and NVMe prerequisites.
 Use it to decide whether hardware matches the recorded route, not as a
 compatibility list for other K3 products.
 
@@ -15,19 +16,21 @@ The K3 is the SoC, the K3-CoM260 is the module, and the carrier provides the
 connectors and recovery header. A module name alone is not enough to choose a
 pinout or power supply.
 
-The [recorded setup](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#recorded-snapshot)
-is deliberately narrower than a product-family compatibility list:
+The [F45 host record](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
+and [historical F44 setup](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#recorded-snapshot)
+are deliberately narrower than a product-family compatibility list:
 
 | Item | Recorded setup |
 | --- | --- |
 | Kit | Firefly-sold K3-CoM260 with 8 GiB RAM, on a Firefly carrier |
 | Carrier identity | Exact PCB model/revision not established; `k3-com260-ifx` is the device-tree identity, not a PCB identifier |
 | Firmware | Bianbu Minimal K3 v4.0.1, non-UEFI U-Boot |
-| Fedora storage | WD Red SN700 500 GB in the carrier's 2280 slot; prepared through a USB NVMe enclosure; the only NVMe device in this route |
+| Fedora storage | NVMe in the carrier's 2280 slot; the historical F44 setup, prepared through a USB enclosure, identifies a WD Red SN700 500 GB. F45 was tested on two existing partitions (p4/p5) of the same NVMe that holds F44, prepared from that F44 system as maintenance host. A USB enclosure is one untested way to prepare F45 partitions from a workstation. |
 | Access | 3.3 V USB serial adapter, physical reset/power-cycle access, and a trusted isolated LAN for SSH |
 
-The SSD model records what was used; it is not a minimum requirement or a
-compatibility certification for other drives. Do not treat Firefly's
+The historical SSD model records what was used; it is not a minimum
+requirement or a compatibility certification for other drives. Do not treat
+Firefly's
 `CORE-K3JD4` system-on-module/product family as the identity of this kit's
 carrier, or transfer these wiring instructions to another carrier.
 
@@ -62,31 +65,43 @@ assessment of any reader's unit.
 ## Prepare the Linux workstation
 
 Use Bash and simple working paths without spaces. The
-[Recorded Fedora recipe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#workstation-serial-and-notation)
+[Fedora 45 recipe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#workstation-serial-and-notation)
 is the authority for commands, device selection, and per-machine variables.
-Only the Linux-workstation route is documented here.
+Only the Linux-workstation route is documented here, with a **Linux
+maintenance host** that can reach the K3's NVMe; the tested maintenance host
+was Fedora 44 on other partitions of the same disk, and other kinds are
+unverified. The fresh installation into two existing partitions was
+performed end to end on October 20, 2026; no F44 installation or shrink
+step is required. Read the
+[readiness and recorded scope](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#readiness-and-recorded-scope)
+before planning disk work.
 
-| Phase | Workstation requirements from the recipe |
+| Phase | Workstation and maintenance-host requirements from the recipe |
 | --- | --- |
-| Bootstrap | Git, SSH, tmux, picocom, curl, xz, zstd, dtc, util-linux, udevadm, GNU coreutils, and `partprobe` from parted |
-| Optional KVM host build | Normal kernel build dependencies, Clang/LLD and LLVM tools, GNU `riscv64-linux-gnu-` binutils, dtc, pahole, Git, and rsync |
-| Optional persistent guest | `qemu-img`, libguestfs `virt-copy-out`, `cloud-localds`, Python 3, curl, zstd, and `ssh-keygen` |
+| F45 installation and bootstrap | Workstation: Git, Bash, Python 3.10+, OpenSSH client and key tools, and serial tools. Maintenance host: sudo, Python 3.10+, util-linux, e2fsprogs, btrfs-progs, rsync, curl, xz, zstd, dtc with `fdtget`/`fdtput`, systemd and udev, plus about 12 GiB free below `/var/tmp`. Check the exact dependency list before starting. |
+| Pinned F45 package update | The [public bundle's dependencies](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/README.md#interfaces-and-dependencies), including RPM inspection, transfer tools and the adjacent lock/helpers; no kernel source build is required. |
 
-Allow workstation storage for the Fedora image; the optional KVM route also
-needs space for a full Linux history, separate build output and guest
-preparation. Have an expendable or backed-up NVMe, its USB enclosure, the
-serial adapter, and a USB data cable for recovery. Add header-compatible
-jumper leads/removable jumpers or normally-open momentary switches for
-FC_REC and RST to ground, following the
+Allow maintenance-host storage for the compressed image (about 1.2 GB) and
+its decompressed copy, and workstation storage for the pinned RPM bundle.
+Have two erasable NVMe partitions (at least 2 GiB and 32 GiB), a maintenance
+host that can reach them, the serial adapter, and a USB data cable for
+recovery. Add header-compatible jumper leads/removable jumpers or
+normally-open momentary switches for FC_REC and RST to ground, following the
 [conditional header reference](https://github.com/xjamesmorris/k3-com260-info/wiki/Console-and-Recovery#conditional-12-pin-header-reference).
 You need to be able to hold recovery while applying power or pulsing reset.
-Do not select a workstation disk for imaging by a guessed device name.
+Select the disk and partitions by stable `/dev/disk/by-id/` names, never by
+a guessed device name.
 
-The recorded route uses the 2280 NVMe slot and removes microSD cards:
+The route uses the 2280 NVMe slot and removes microSD cards:
 non-vendor SD layouts stopped the stock BootROM before serial output during
-bring-up. This is not an SD installation guide. The exact preparation and
-unmount checkpoints are in
-[Image and prepare the NVMe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#image-and-prepare-the-nvme).
+historical bring-up. This is not an SD installation guide. The exact
+identification, check and populate checkpoints are in
+[Image and prepare the NVMe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#image-and-prepare-the-nvme).
+
+The [F44 archive](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-44-Archive)
+retains the optional source-built host and guest tooling. Its full Linux
+history, Clang/LLVM/GNU-binutils build requirements and guest-preparation
+tools belong to that historical development route, not F45 host setup.
 
 ## Ready to continue
 
@@ -101,26 +116,34 @@ before any disk write; then follow
 [Install Fedora](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora).
 Keep the initial host on a trusted isolated LAN and follow the recipe's
 credential and SSH host-key checks before wider network exposure.
+Cooling-fan work is explicitly deferred: the fan runs at full speed under
+the pinned F45 kernels, which exposed no SoC thermal zones; an NVMe
+temperature is not a SoC measurement. No thermal-protection, fail-safe, or
+unattended-operation assurance is established.
 
 ## Source scope
 
-The [preserved public recipe](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md)
-is the setup evidence. The linked V2.1 vendor guide names product version
+The public F45 results establish the tested volume-route and side-by-side
+host scope; the
+[preserved F44 recipe](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md)
+retains the older setup details. Manufacturer/seller references above retain
+their **September 27, 2026** review, not a new October availability or
+electrical check. The linked V2.1 vendor guide names product version
 `K3-CoM260_P1_LP5315B_32X2_v03_20260312`; it is reference documentation, not
 proof of this kit's carrier PCB revision. Match the actual board before using
 its connector diagrams.
 
 ## Technical notes
 
-**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit; exact carrier PCB model/revision unknown; Linux-workstation/NVMe route.
+**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit; exact carrier PCB model/revision unknown; Linux workstation, Linux maintenance host and two existing NVMe partitions.
 
-**Evidence:** Recorded setup in the public Fedora recipe; separately identified manufacturer and seller references.
+**Evidence:** Public F45 results recorded October 20 and October 19 and reviewed locally on October 20, and preserved September 25 F44 setup details. Manufacturer/seller and electrical-reference context retains its September 27 review.
 
-**Source review:** 2026-09-27.
+**Source review:** 2026-10-20.
 
-**Hardware observation:** 2026-09-25 Fedora/KVM setup snapshot; no new hardware or electrical measurements.
+**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 side-by-side F45 host boots and 2026-09-25 archived setup snapshot. No new electrical measurement.
 
-**Destructive operations:** None on this page. The linked Install Fedora procedure overwrites the entire selected NVMe disk.
+**Destructive operations:** None on this page. The linked installation reformats the two selected NVMe partitions, destroying their contents.
 
 **Previous:** [Start here](https://github.com/xjamesmorris/k3-com260-info/wiki/Home).
 **Next:** [Console and recovery](https://github.com/xjamesmorris/k3-com260-info/wiki/Console-and-Recovery).

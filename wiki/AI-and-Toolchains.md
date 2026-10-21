@@ -3,8 +3,8 @@
 # AI and toolchains
 
 This page is a source and vendor orientation for developers evaluating
-SpacemiT K3 CPU capabilities from the recorded Fedora host. It separates
-vendor-described X100 and SpacemiT A100 capabilities from Fedora/KVM evidence
+SpacemiT K3 CPU capabilities alongside the F45 host route and F44 archive.
+It separates vendor-described X100 and SpacemiT A100 capabilities from Fedora/KVM evidence
 and does not document an AI inference experiment. Use it to frame compiler,
 runtime, packaging, or library work rather than as an enablement or
 performance guide.
@@ -20,13 +20,21 @@ Use the vendor-qualified name in reports, searches, and benchmark labels.
 | --- | --- | --- |
 | SpacemiT X100 | [SpacemiT CPU System, section 8.1](https://github.com/spacemit-com/docs-chip/blob/main/en/key_stone/k3/k3_docs/k3_usermanual/08_cpu.md) | Vendor-described high-performance RVA23 cores with RVV VLEN 256 and RVH 1.0. This is a capability description, not a software test. |
 | SpacemiT A100 | [SpacemiT CPU System, section 8.2](https://github.com/spacemit-com/docs-chip/blob/main/en/key_stone/k3/k3_docs/k3_usermanual/08_cpu.md) | Vendor-described RISC-V AI cores with IME, RVV VLEN 1024, and explicitly no Hypervisor extension. Do not count them as extra KVM vCPU-hosting cores. |
-| Recorded Fedora host and guest | [September 25 public snapshot](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md#recorded-snapshot) | Fedora/KVM operation on the pinned Firefly/NVMe stack. Classifying this as X100 virtualization follows the vendor RVH distinction; the snapshot does not publish a per-hart inventory or a Fedora SpacemiT A100 inference result. |
+| Archived F44 host and guest | [September 25 public snapshot](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md#recorded-snapshot) | Historical Fedora/KVM operation on the pinned Firefly/NVMe stack. Classifying this as X100 virtualization follows the vendor RVH distinction; the snapshot does not publish a per-hart inventory or a Fedora SpacemiT A100 inference result. |
 
 Do not turn that last row into a claim that a particular number of AI cores
 was observed online or offline. There is also **no documented Fedora X100
 inference demonstration here**. The practical Linux-workstation/NVMe journey
-remains [the Fedora recipe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe);
-working host and guest kernels are not evidence of an inference backend.
+now starts with the
+[F45 recipe](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe).
+Its [public host record](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
+is host installation, bring-up and KVM initialization only, not an F45
+guest or AI result. The recipe's two-partition volume route was tested on
+October 20, 2026; whole-disk imaging remains unverified.
+The [F44 archive](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-44-Archive)
+retains the full-guest example. Neither release's working kernels are
+evidence of an inference backend. The external capability/toolchain review
+on this page remains dated September 27, 2026.
 
 There is a concrete kernel-development boundary: the reviewed upstream
 [`riscv_v_setup_vsize()` implementation at `fd179f8a05be`](https://github.com/torvalds/linux/blob/fd179f8a05be3ccae366b9b96e176b51fbe54aab/arch/riscv/kernel/vector.c)
@@ -71,8 +79,9 @@ to have been performed on this board.
 
 Online GCC/LLVM documentation can describe development versions newer than
 the installed compiler. Record the actual tools; do not silently replace the
-[host build's retained toolchain/configuration](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/README.md#configuration-and-recorded-build)
-with a new compiler pin.
+[archived F44 host build's retained toolchain/configuration](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/README.md#configuration-and-recorded-build)
+with a new compiler pin. That optional historical build is not an F45 host
+installation requirement.
 
 Before preparing a contribution, read the
 [project-specific routes and policies](https://github.com/xjamesmorris/k3-com260-info/wiki/Contributing-Upstream#project-specific-routes-and-policies).
@@ -84,11 +93,11 @@ orientation, not text to paste into an upstream report.
 
 **Applies to:** SpacemiT K3 X100 and SpacemiT A100 core capabilities; Fedora development on the recorded K3-CoM260/Firefly host. Other software stacks are references only.
 
-**Evidence:** Public Fedora/KVM record, vendor architecture and inference documentation, and upstream source/documentation review; development opportunities are not completed experiments.
+**Evidence:** Archived F44 Fedora/KVM record, vendor architecture/inference documentation and upstream review dated September 27. F45 route context was locally reconciled with public host results on October 20, not a new AI/source review; opportunities are not completed experiments.
 
 **Source review:** 2026-09-27.
 
-**Hardware observation:** No AI inference experiment recorded here. The cited Fedora/KVM hardware snapshot is 2026-09-25, not an AI result.
+**Hardware observation:** No AI inference experiment recorded here. The cited F45 host records are 2026-10-19 and 2026-10-20 (the latter a fresh installation into existing p4/p5 partitions with three attended 7.2.8 boots), and the archived F44 guest snapshot is 2026-09-25; none is an AI result.
 
 **Destructive operations:** None on this page. No model download, inference, affinity change, or CPU-enablement procedure is provided.
 

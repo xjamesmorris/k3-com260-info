@@ -9,6 +9,13 @@ needed restoration or a deliberate human choice. The header mapping is
 conditional and specific to the recorded carrier context rather than a
 universal CoM260 pinout.
 
+The [F45 host record](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
+uses the same non-UEFI firmware/serial boundary.
+Its [tested installation into two existing NVMe partitions](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#readiness-and-recorded-scope)
+keeps matching firmware and boots by temporary U-Boot commands; changing
+the documentation default is not permission to reflash or change the saved
+boot environment.
+
 ## Conditional 12-pin header reference
 
 **Use this mapping only if the Firefly-sold kit's header matches the reference
@@ -45,16 +52,16 @@ control signals. The serial adapter connects only RX, TX and ground:
 
 1. Match the conditional header reference above against the actual carrier. Use the [hardware scope](https://github.com/xjamesmorris/k3-com260-info/wiki/Hardware-and-Setup#identify-the-hardware-first), not the module name, to decide whether these notes apply. Stop if the wiring cannot be matched.
 2. Connect a **3.3 V USB serial adapter to RX, TX, and ground only**: adapter TX to board RX, adapter RX to board TX. Do not connect the adapter's power/VCC lead. A different electrical interface is not a substitute.
-3. Open the console at **115200 8N1, no flow control**, using the [recipe's workstation and serial instructions](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#workstation-serial-and-notation). Record the firmware banner/version and confirm that autoboot can be interrupted. Keep physical reset or power-cycle access.
+3. Open the console at **115200 8N1, no flow control**, using the [F45 recipe's workstation and serial instructions](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#workstation-serial-and-notation). Record the firmware banner/version and confirm that autoboot can be interrupted. Keep physical reset or power-cycle access.
 
 **Checkpoint:** readable, interruptible **Bianbu Minimal K3 v4.0.1 non-UEFI
 U-Boot**, matching the recorded route. If it matches, do not factory-flash
 simply to start the guide; continue to
 [Install Fedora](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora).
 Working but different or unidentified firmware needs the decision below.
-All Fedora boot choices in the recipe are temporary: never run `env save` or
-`saveenv`. Reset follows the existing saved path, which may boot Bianbu,
-not either Fedora kernel.
+All Fedora boot choices in the recipes are temporary: never run `env save` or
+`saveenv`. Reset follows the existing saved path, which may boot Bianbu or
+the retained F44 installation, not the temporarily selected F45 kernel.
 
 ## Decide whether recovery is needed
 
@@ -112,11 +119,11 @@ the normal serial checkpoint before returning to the Fedora recipe.
 
 **Applies to:** Recorded Firefly-carrier K3-CoM260 kit and Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; carrier PCB revision unknown.
 
-**Evidence:** Public Fedora serial/boot and Firefly recovery records; UART/ground pin numbers from the conditional V2.1 vendor reference on this page.
+**Evidence:** Public October 20 and October 19 F45 host scope and preserved Fedora serial/Firefly recovery records. The conditional V2.1 UART/ground reference retains its September 27 review; no new pinout or electrical check was performed.
 
-**Source review:** 2026-09-27.
+**Source review:** 2026-10-20.
 
-**Hardware observation:** 2026-09-25 serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date.
+**Hardware observation:** 2026-10-20 and 2026-10-19 F45 temporary boots in the public host record (on 2026-10-20, after a fresh installation into existing p4/p5 partitions: one 7.2.7 bootstrap, the exact 7.2.8 update and three attended 7.2.8 boots) and 2026-09-25 archived serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date. No recovery test was added here.
 
 **Destructive operations:** Serial setup does not erase storage. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
 

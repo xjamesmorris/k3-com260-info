@@ -7,9 +7,15 @@ projection, not another editing workspace. These tools prepare work for the
 human author under [LLM-POLICY.md](../../LLM-POLICY.md); passing checks does
 not authorize a push or certify a hardware result.
 
-The recorded hardware is the Firefly-carrier K3-CoM260. The protected
-September 25, 2026 Fedora/KVM how-to remains the command authority. Nothing
-here executes its Markdown, shell, U-Boot, disk-writing, or guest commands.
+The recorded hardware is the Firefly-carrier K3-CoM260. The maintained F45
+command source is `wiki/Fedora-45-Recipe.md`, with public pins and helpers in
+`fedora-45/`. The protected September 25, 2026 Fedora/KVM how-to remains the
+archived F44 command authority. Nothing here executes Markdown, shell,
+U-Boot, disk-writing, or guest commands. The fresh-F45 installation into
+two existing NVMe partitions was performed end to end on October 20, 2026;
+partition creation, other maintenance hosts and whole-disk imaging remain
+unverified, and offline checks do not verify them. Cooling-fan work is
+deferred.
 
 ## Local setup
 
@@ -119,12 +125,13 @@ recovery; this list does not replace them.
 .wiki-venv/bin/python -B tools/wiki/manage.py validate --ref HEAD --offline
 .wiki-venv/bin/python -B tools/wiki/manage.py render --ref HEAD --output .wiki-build
 glow -p .wiki-build/Home.md
+glow -p .wiki-build/Fedora-45-Recipe.md
 glow -p .wiki-build/Fedora-Recipe.md
 ```
 
 `glow` is only a convenience. If it is not installed, review the same exact
 files with `cat .wiki-build/Home.md` and
-`cat .wiki-build/Fedora-Recipe.md`.
+`cat .wiki-build/Fedora-45-Recipe.md` and `cat .wiki-build/Fedora-Recipe.md`.
 
 Committed mode reads exact Git objects at the resolved commit, not the
 index, current `HEAD` content, or an unrelated working file. Worktree mode
@@ -145,7 +152,10 @@ It never writes into the protected how-to or arbitrary output directories.
 
 ## Manifest and content schema
 
-`manifest.json` is schema 1. The executable contract rejects unknown keys,
+`manifest.json` uses schema 2 for F45-first content. Schema 1 remains supported
+with its original interpretation and byte-for-byte projection so the
+publisher can recognize the existing public wiki without executing old code.
+The executable contract rejects unknown keys,
 duplicate JSON keys, duplicate/case-colliding pages, path traversal, symlinks,
 executable Markdown, missing files and unlisted publication files.
 There are no copied binary assets in this version.
@@ -158,8 +168,9 @@ There are no copied binary assets in this version.
 | `pages[]` | `source`, `target`, `title`, `section`, `kind`; source must be exactly `wiki/TARGET.md`. ASCII hyphenated slugs are case-sensitive. |
 | `section` | `Start`, `Operate`, `Develop`, or `Resources`; sidebar order follows the manifest. |
 | `kind` | `landing`, `procedure`, `reference`, or `resources`. Only the last can receive resource-link availability exceptions. |
-| `recipe` | The single protected input, its Git blob/SHA256, destination, title/group, enumerated link transforms, checkout-line transform, and exact generated navigation to installation, maintained recovery, and Home. |
-| `critical_artifacts` | Exactly the `omni-bootstrap` and `fedora-guest` records: `id`, `url`, `sha256`, `checksum_url`, and `source` with exact protected `path`/`blob`. Both images and sidecars are mandatory publication checks. |
+| `recipe` | The protected F44 input, its Git blob/SHA256, unchanged `Fedora-Recipe.md` destination, title/group, enumerated link transforms, checkout-line transform, and exact generated navigation. Schema 1 keeps `Start`/Install-Fedora; schema 2 uses `Resources`/Fedora-44-Archive, with the same maintained recovery and Home links. |
+| `critical_artifacts` | Exactly the retained `omni-bootstrap` and `fedora-guest` F44 records: `id`, `url`, `sha256`, `checksum_url`, and `source` with exact protected `path`/`blob`. Both images and sidecars remain mandatory in both schemas. |
+| `fedora45` | Schema 2 only: exact `source` (`path`/`blob`) of the reviewed `fedora-45/files/sources.lock.json`, and `recipe: Fedora-45-Recipe.md`. The validator independently binds the lock blob and derives all F45 installation requests from its complete inventory. |
 | `bootstrap_home` | Exact reviewed UTF-8 initial Home bytes: nonempty, LF-terminated, without CR/NUL, and under 4 KiB; approved for one-time adoption. |
 | `validation_exceptions` | Exact source-bound review allowances described below; empty by default. |
 
@@ -168,7 +179,9 @@ The output is precisely the authored targets, `Fedora-Recipe.md`,
 No private intake directory, arbitrary include or recursive mirror is a
 publisher input. Source scripts are never executed or copied into the wiki;
 the guest preparer's explicitly pinned public blob is read only to verify
-its declared default image/checksum constants.
+its declared default image/checksum constants. The F45 lock is also read as
+inert JSON, never executed. Schema 2 requires both the authored F45 recipe and
+the F44 archive landing page; it does not replace the protected F44 source.
 
 Each authored page begins with one H1 and a substantive opening paragraph.
 The final heading is exactly `## Technical notes`; it contains these five
@@ -241,7 +254,11 @@ worked dldo4 RFC and Fedora guest report headings and artifact checklists.
 These are structural guards, **not proof of the claims in the cells**.
 The three evidence stages, missing per-mode checks, observed versus
 reference-only results, and destination submission policies still need
-human review.
+human review. The F45 host-only row must not borrow guest checks from the
+archived F44 rows. Human readiness review must also distinguish the tested
+F45 volume route (two existing partitions) from untested whole-disk imaging
+and partition creation. Passing the publisher's checks is not approval to
+publish, or to present an untested alternative as a tested route.
 
 ## Generated recipe: exact permitted changes
 
@@ -315,6 +332,60 @@ the multi-GB images or verify detached signatures; the installation recipe
 and guest preparer still verify the actual downloaded bytes against their
 pinned SHA256 values before use.
 
+### Fedora 45 inputs
+
+Schema 2 adds the September 23 F45 Beta Omni image and its explicit `.sha256`
+sidecar, plus the five binary RPMs from COPR build `11035571`. All seven
+requests are mandatory and non-waivable, even if their URLs appear only in
+command fences or helper inputs. The source lock enumerates exact filenames,
+URLs, and SHA256 values, bootstrap and update releases, repository-metadata
+identity, and the explicitly unproven source Git binding. A changed lock
+requires a reviewed validator pin update, not merely editing the manifest.
+Append approved blobs to `F45_SOURCE_BLOBS`; retain every previously published
+blob and its schema interpretation. The renderer validates each historical
+snapshot against its own declared approved blob, not a single moving current
+pin. This lets a reviewed lock refresh preserve recognition of an earlier
+schema-2 wiki publication as well as schema 1.
+
+The recipe must retain the locked image URL/hash. The helpers verify actual
+downloaded RPM bytes against the public lock; the wiki checker performs
+bounded HEAD requests only and does not hash or verify signatures on RPM
+bodies. RPMs have no invented checksum-sidecar requests. The original SRPM
+URL was unavailable at the October 19 review; it is provenance-only and is
+not an installation input or a required download. A different SRPM is not an
+equivalent replacement merely because its filename matches.
+
+**COPR signed redirects, reviewed October 20, 2026:** each pinned COPR RPM URL
+answers with a 301 to Red Hat's Pulp content service
+(`packages.redhat.com/api/pulp-content/public-copr/…`, same project path and
+filename), which answers with a 302 to a short-lived, anonymous S3 link on
+`copr-pulp-prod.s3.amazonaws.com`. That link's query carries the signing fields
+`AWSAccessKeyId`, `Expires` and `Signature`, which the general credential guard
+refuses everywhere else. The checker accepts that one hop only when all of
+these hold:
+
+- the link is one of the five locked F45 COPR RPMs, checked as a critical
+  artifact;
+- the first redirect went exactly to the matching Pulp URL;
+- the S3 object path is `/artifact/<id>/<2 hex>/<62 hex>` and those 64 hex
+  digits are the RPM's pinned SHA-256, so the link names the content-addressed
+  pinned bytes;
+- the query has only the three signing fields, plus optionally
+  `response-cache-control` and `response-content-disposition`, each once and
+  well formed;
+- the S3 object answers the HEAD directly with a non-empty binary entity.
+
+Anything else falls back to the unchanged guard and fails closed. The signed
+link is used for that single HEAD request and is never printed, stored or put
+in a receipt: refusals suppress it, and reports keep the locked COPR URL.
+A changed pattern (another host, signature version or path shape) needs a new
+review, not a looser rule. An ordinary `curl` success is still not this check,
+and the helpers still verify the downloaded RPM bytes against the lock.
+
+Do not waive these required inputs or print temporary signed URLs. Any other
+change to credential or redirect handling needs its own reviewed checker
+change.
+
 ## Privacy and reviewed exceptions
 
 The scanner flags credential-shaped values, private-key headers, credential
@@ -378,9 +449,11 @@ an outage does not authorize an agent to invent a review.
 Publication validates parsed Markdown links and bare URL text in prose.
 It does not mine inline code, fenced blocks or indented code for network
 targets, and never executes examples. The code-only installation images
-above enter the gate through the explicit source-bound manifest inventory,
+above and the F45 lock inputs enter the gate through explicit source-bound inventories,
 not an arbitrary fence-URL scan. HTTPS is mandatory, with no URL credentials, secret
-query fields, custom ports, insecure skip flags, or network overrides.
+query fields, custom ports, insecure skip flags, or network overrides; the
+single reviewed exception is the COPR signed hop described under
+[Fedora 45 inputs](#fedora-45-inputs).
 Reserved example domains are recorded as examples and never requested.
 Local/private/loopback, mixed public/private DNS and IPv6 transition
 addresses are rejected before connecting. Every redirect is checked again.
@@ -646,6 +719,7 @@ certify a DCO sign-off.
 
 glow -p .wiki-build/prepared/RECEIPT_SHA256/report.md
 glow -p .wiki-build/prepared/RECEIPT_SHA256/tree/Home.md
+glow -p .wiki-build/prepared/RECEIPT_SHA256/tree/Fedora-45-Recipe.md
 glow -p .wiki-build/prepared/RECEIPT_SHA256/tree/Fedora-Recipe.md
 
 # Only after explicit human approval of these exact receipt bytes:
@@ -654,7 +728,7 @@ glow -p .wiki-build/prepared/RECEIPT_SHA256/tree/Fedora-Recipe.md
   --expect-receipt RECEIPT_SHA256
 ```
 
-Without `glow`, use `cat` on those same three files. Do not regenerate or edit
+Without `glow`, use `cat` on those same four files. Do not regenerate or edit
 the prepared tree while reviewing it.
 
 Preparation does not push or make a wiki commit. It requires clean source
@@ -772,7 +846,8 @@ The focused acceptance suite covers projection fidelity, metadata/anchors,
 paths/modes, privacy and source-bound exceptions, HTTP/DNS bounds, actual-ref
 and historical-content gates, bootstrap/default branches, receipts,
 managed deletion, drift/races, interrupted work, forward rollback, and both
-mandatory code-only install images/checksum records without binary GETs.
+mandatory code-only install images/checksum records and F45 binary RPMs
+without binary GETs.
 Run it after tooling changes, plus `bash -n .githooks/pre-push` and
 `shellcheck .githooks/pre-push`. Initial integration still requires the scoped
 publisher security review, reader-journey review and human acceptance.
@@ -806,8 +881,8 @@ abbreviated ref:
 ```
 
 `check-links` binds the matching running tool and pinned runtime before and
-after offline and bounded online checks, including the two mandatory image
-HEADs/checksum records. It prints canonical public-safe JSON to stdout and
+after offline and bounded online checks, including all mandatory image,
+checksum and F45 RPM inputs. It prints canonical public-safe JSON to stdout and
 uses the normal sanitized CLI error path. The report includes source
 commit/tree, tool/runtime identities, stable link verdicts and any used
 exceptions; it explicitly sets `public_reachability_checked` and

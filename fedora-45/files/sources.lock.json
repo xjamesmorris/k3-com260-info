@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "recorded_on": "2026-10-19",
+  "image": {
+    "url": "https://dl.fedoraproject.org/pub/alt/risc-v/releases/test/45_Beta/Server/riscv64/images/Fedora-Server-Host-Omni-45-20260923.2.riscv64.raw.xz",
+    "checksum_url": "https://dl.fedoraproject.org/pub/alt/risc-v/releases/test/45_Beta/Server/riscv64/images/Fedora-Server-Host-Omni-45-20260923.2.riscv64.raw.xz.sha256",
+    "filename": "Fedora-Server-Host-Omni-45-20260923.2.riscv64.raw.xz",
+    "sha256": "6f0ebebc251149ba814fcb0e73c2535bc0a65437eff4827bdc4496916a8eebca",
+    "kernel_release": "7.2.7-300.0.riscv64.omni.fc45.riscv64"
+  },
+  "kernel": {
+    "build_id": 11035571,
+    "kernel_release": "7.2.8-300.0.riscv64.omni.fc45.riscv64",
+    "source_rpm": "kernel-7.2.8-300.0.riscv64.omni.fc45.src.rpm",
+    "source_git_commit": null,
+    "primary_metadata_sha256": "e8ea2f04bb1fbf3c4465676cd608b33f0a90d39a8400733e04da4ccc1a823fa3",
+    "packages": [
+      {
+        "name": "kernel",
+        "filename": "kernel-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "url": "https://download.copr.fedorainfracloud.org/results/@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/kernel-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "sha256": "8871c5d2fbc7f306365c24c61a2717e02526e530dcd38ad40cdb1024a7b62a70"
+      },
+      {
+        "name": "kernel-core",
+        "filename": "kernel-core-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "url": "https://download.copr.fedorainfracloud.org/results/@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/kernel-core-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "sha256": "ea2305aecaf4c8628a63c6aa6aa00c6e268625552b761516041159027899d125"
+      },
+      {
+        "name": "kernel-modules-core",
+        "filename": "kernel-modules-core-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "url": "https://download.copr.fedorainfracloud.org/results/@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/kernel-modules-core-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "sha256": "15475bf19daef38af3f2a135af9d2dfd8c3b41c2253e226e6f9947487003e250"
+      },
+      {
+        "name": "kernel-modules",
+        "filename": "kernel-modules-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "url": "https://download.copr.fedorainfracloud.org/results/@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/kernel-modules-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "sha256": "863a2442ded1cdd696cce72874b96926a961e0ae8628f96428484634487c006c"
+      },
+      {
+        "name": "kernel-modules-extra",
+        "filename": "kernel-modules-extra-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "url": "https://download.copr.fedorainfracloud.org/results/@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/kernel-modules-extra-7.2.8-300.0.riscv64.omni.fc45.riscv64.rpm",
+        "sha256": "540c12cadbacd6524be01230a5755ef33d34d3fcd732188f0008f7582346f560"
+      }
+    ]
+  }
+}

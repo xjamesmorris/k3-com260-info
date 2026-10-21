@@ -5,13 +5,21 @@
 This directory is for Fedora/RISC-V developers using K3-CoM260 who need
 official project and vendor resources or clearly labeled public prior
 art beyond the recorded route. Start with
-[the recorded Fedora route](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora),
+[the F45-first installation guide](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora),
 then read each table row for its purpose, language/support boundary, and check
 date. Links to other boards and distributions are not compatibility claims;
 use this directory to find the owner of a problem or understand adjacent work,
 not to assemble a new installation recipe from unrelated boards.
 The [dated status](https://github.com/xjamesmorris/k3-com260-info/wiki/Status-and-Sources)
-separates the Fedora 44 community baseline from Fedora 45 Beta.
+separates the F45 host-only record from the retained F44 guest archive.
+
+The [F45 public result](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
+covers the tested fresh installation into two existing NVMe partitions and
+the earlier side-by-side host boots, not whole-disk imaging or an F45
+guest. For the preserved September 25 route, use the
+[F44 archive](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-44-Archive)
+and its unchanged command source. This local route-link update does not
+refresh the external resources' September 27 check dates below.
 
 ## Fedora and upstream development
 
@@ -49,8 +57,9 @@ which separates public code, vendor inference reports, and Fedora evidence.
   confirm technical claims against original sources and the applicable
   hardware. Checked 2026-09-27.
 - The [public dldo4 RFC](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/dldo4/0001-riscv-dts-spacemit-k3-com260-keep-dldo4-enabled.patch)
-  is English-language prior art for a tightly scoped regulator observation
-  and a maintainer-facing question. It is retained as a draft; the cited
+  is retained historical English-language prior art for a tightly scoped
+  regulator observation and a maintainer-facing question. It is retained as
+  a draft; the cited
   record does not establish submission or acceptance upstream. See the
   [worked preparation example](https://github.com/xjamesmorris/k3-com260-info/wiki/Contributing-Upstream#worked-preparation-dldo4-rfc).
   Checked 2026-09-27.
@@ -64,7 +73,7 @@ manual figures, or third-party logs.
 
 **Applies to:** Reference resources for Fedora/RISC-V developers using K3-CoM260; links to other boards and distributions are not compatibility claims.
 
-**Evidence:** Official project/vendor resources and explicitly labeled public prior art.
+**Evidence:** Official project/vendor resources and explicitly labeled public prior art, externally reviewed September 27. F45 route/archive context was locally reconciled against the public host records on October 20; resource rows were not rechecked.
 
 **Source review:** 2026-09-27.
 
@@ -73,4 +82,4 @@ manual figures, or third-party logs.
 **Destructive operations:** None on this page. Linked distribution and vendor instructions may overwrite storage or firmware; they are not validated substitutes for this wiki's route.
 
 **Previous:** [Contributing upstream](https://github.com/xjamesmorris/k3-com260-info/wiki/Contributing-Upstream).
-**Next:** [Status and sources](https://github.com/xjamesmorris/k3-com260-info/wiki/Status-and-Sources).
+**Next:** [Fedora 44 archive](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-44-Archive).

@@ -17,10 +17,13 @@ execution, agent delegation, Git operations or external submissions.
 - Is the Linux/NVMe procedure based on the performed work, without turning
   alternatives into new supposedly tested recipes?
 - Are module, seller, carrier PCB and device-tree identity distinguished?
-- Are the 7.1.5 bootstrap, later source-built host and persistent Fedora guest
-  separate evidence stages, including their different regulator/CPU settings?
-- Is the generated recipe still the sole command authority, with only the
-  manifest's declared adaptations and protected source preserved?
+- Are the F45 7.2.7/7.2.8 packaged-host results distinct from the archived F44
+  7.1.5 bootstrap, source-built host, and persistent guest, including their
+  different regulator/CPU settings? Is an unperformed fresh install still
+  visibly unverified, without implying a tested F45 guest?
+- Is Fedora-45-Recipe the maintained F45 command authority and the generated
+  Fedora-Recipe only the retained F44 authority, with the manifest's declared
+  adaptations and protected source preserved?
 - Does each result identify its exact host, guest, QEMU, relevant settings,
   observation scope and public evidence? Missing facts must remain unknown.
 - Are upstream contribution examples useful performed-work preparation,
@@ -29,6 +32,8 @@ execution, agent delegation, Git operations or external submissions.
   material, unsupported isolation claims and stale release claims excluded?
 - Are source review, human review, hardware observation and publication dates
   distinct and truthful?
+- Is deferred cooling-fan work excluded rather than implied complete by this
+  documentation update?
 - Does the supplied deterministic validation report cover the proposed
   snapshot and generated output? Do not claim you ran checks yourself.
 - Are publication receipt, public-source reachability, exceptions and remote

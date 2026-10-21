@@ -8,6 +8,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from datetime import date
 import gzip
 import io
+import json
 import os
 from pathlib import Path
 import shlex
@@ -17,6 +18,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from urllib.parse import urlencode
 
 TOOLS = Path(__file__).resolve().parents[1]
 TOOL_ROOT = TOOLS.parents[1]
@@ -37,7 +39,18 @@ DAY = date(2026, 9, 27)
 def fixture_manifest():
     trusted_ref = os.environ.get("WIKI_TEST_SOURCE_REF")
     data = c.Snapshot(ROOT, trusted_ref).read(c.MANIFEST) if trusted_ref else c.regular_read(ROOT, c.MANIFEST)
-    return c.load_json(data, "fixture manifest")
+    manifest = c.load_json(data, "fixture manifest")
+    # Keep the existing publication fixtures on the original public schema.
+    if manifest["schema"] == 2:
+        manifest["schema"] = 1
+        del manifest["fedora45"]
+        manifest["pages"] = [
+            page for page in manifest["pages"]
+            if page["target"] not in (c.F45_RECIPE, "Fedora-44-Archive.md")
+        ]
+        manifest["recipe"]["section"] = "Start"
+        manifest["recipe"]["navigation"]["installation"] = c.WIKI_URL + "/Install-Fedora"
+    return manifest
 
 
 def fixture_output():
@@ -226,6 +239,175 @@ class ReferenceTests(unittest.TestCase):
         m["pages"][0]["source"] = "README.md"
         with self.assertRaises(c.Invalid):
             c.render(MemorySnapshot(m, self.data))
+
+
+def fedora45_fixture_lock():
+    release = "7.2.8-300.0.riscv64.omni.fc45.riscv64"
+    filename = "Fedora-Server-Host-Omni-45-20260923.2.riscv64.raw.xz"
+    image_url = ("https://dl.fedoraproject.org/pub/alt/risc-v/releases/test/"
+                 "45_Beta/Server/riscv64/images/" + filename)
+    return {
+        "schema": 1, "recorded_on": "2026-10-19",
+        "image": {
+            "filename": filename, "url": image_url, "checksum_url": image_url + ".sha256",
+            "sha256": "1" * 64, "kernel_release": "7.2.7-300.0.riscv64.omni.fc45.riscv64",
+        },
+        "kernel": {
+            "build_id": 11035571, "kernel_release": release,
+            "source_rpm": "kernel-7.2.8-300.0.riscv64.omni.fc45.src.rpm",
+            "source_git_commit": None, "primary_metadata_sha256": "2" * 64,
+            "packages": [
+                {"name": name, "filename": name + "-" + release + ".rpm",
+                 "sha256": str(index + 3) * 64,
+                 "url": "https://download.copr.fedorainfracloud.org/results/"
+                        "@forge-riscv-members/riscv64_omni_kernel/fedora-45-riscv64/Packages/k/"
+                        + name + "-" + release + ".rpm"}
+                for index, name in enumerate(c.F45_PACKAGES)
+            ],
+        },
+    }
+
+
+class Fedora45Inputs(unittest.TestCase):
+    def setUp(self):
+        self.manifest = fixture_manifest()
+        self.manifest["pages"] = [
+            page for page in self.manifest["pages"]
+            if page["target"] in ("Home.md", "Console-and-Recovery.md", "Install-Fedora.md")
+        ]
+        self.manifest["schema"] = 2
+        self.manifest["recipe"]["section"] = "Resources"
+        self.manifest["recipe"]["navigation"]["installation"] = c.WIKI_URL + "/Fedora-44-Archive"
+        for target, kind in ((c.F45_RECIPE, "procedure"), ("Fedora-44-Archive.md", "reference")):
+            self.manifest["pages"].append({
+                "source": "wiki/" + target, "target": target, "title": target[:-3],
+                "section": "Start" if kind == "procedure" else "Resources", "kind": kind,
+            })
+        self.lock = fedora45_fixture_lock()
+        blob = c.blob_id(c.canonical(self.lock))
+        self.pin = mock.patch.object(c, "F45_SOURCE_BLOBS", frozenset({blob}))
+        self.pin.start()
+        self.addCleanup(self.pin.stop)
+        self.manifest["fedora45"] = {
+            "source": {"path": c.F45_SOURCES, "blob": blob}, "recipe": c.F45_RECIPE,
+        }
+        recipe = c.Snapshot(ROOT, c.BASELINE).read(c.RECIPE_PATH)
+        self.fixture = MemorySnapshot(self.manifest, recipe)
+        self.fixture.files[c.F45_SOURCES] = c.canonical(self.lock)
+        self.fixture.files["wiki/" + c.F45_RECIPE] = page_bytes(
+            title="Fedora 45",
+            extra="```sh\ncurl " + self.lock["image"]["url"] + "\nprintf '" + "1" * 64 + "'\n```\n",
+        )
+
+    def update_manifest(self):
+        self.fixture.files[c.MANIFEST] = c.canonical(self.manifest)
+
+    def repin_fixture_lock(self):
+        data = c.canonical(self.lock)
+        blob = c.blob_id(data)
+        self.fixture.files[c.F45_SOURCES] = data
+        self.manifest["fedora45"]["source"]["blob"] = blob
+        self.update_manifest()
+        return mock.patch.object(c, "F45_SOURCE_BLOBS", frozenset({blob}))
+
+    def test_f45_inputs_are_checked_even_when_urls_are_only_in_code(self):
+        checked = ck.validate(self.fixture, today=date(2026, 10, 19))
+        added = [link for link in checked.links if link.page == c.F45_RECIPE]
+        self.assertEqual(sum(link.role == "critical-artifact" for link in added), 6)
+        self.assertEqual(sum(link.role == "critical-checksum" for link in added), 1)
+        self.assertEqual(
+            {link.url for link in added},
+            {self.lock["image"]["url"], self.lock["image"]["checksum_url"]}
+            | {package["url"] for package in self.lock["kernel"]["packages"]},
+        )
+        hrefs = c.link_values(c.parser().parse(checked.output[c.F45_RECIPE].decode()))
+        self.assertNotIn(self.lock["image"]["url"], hrefs)
+
+    def test_f45_declaration_and_both_release_pages_are_required(self):
+        original = copy.deepcopy(self.manifest)
+        for target in (None, c.F45_RECIPE, "Fedora-44-Archive.md"):
+            self.manifest = copy.deepcopy(original)
+            if target is None:
+                del self.manifest["fedora45"]
+            else:
+                self.manifest["pages"] = [
+                    page for page in self.manifest["pages"] if page["target"] != target
+                ]
+            self.update_manifest()
+            with self.subTest(target=target), self.assertRaises(c.Invalid):
+                c.manifest(self.fixture)
+
+    def test_schema_downgrade_cannot_drop_f45_installation_inputs(self):
+        self.manifest["schema"] = 1
+        del self.manifest["fedora45"]
+        self.manifest["recipe"]["section"] = "Start"
+        self.manifest["recipe"]["navigation"]["installation"] = c.WIKI_URL + "/Install-Fedora"
+        self.update_manifest()
+        with self.assertRaisesRegex(c.Invalid, "complete schema-2 input inventory"):
+            c.manifest(self.fixture)
+
+    def test_lock_mutation_or_a_manifest_only_repin_fails(self):
+        self.fixture.files[c.F45_SOURCES] += b"\n"
+        with self.assertRaisesRegex(c.Invalid, "source lock changed"):
+            c.manifest(self.fixture)
+        self.manifest["fedora45"]["source"]["blob"] = c.blob_id(self.fixture.files[c.F45_SOURCES])
+        self.update_manifest()
+        with self.assertRaisesRegex(c.Invalid, "reviewed public source lock"):
+            c.manifest(self.fixture)
+
+    def test_missing_lock_fails_without_falling_back_to_another_source(self):
+        self.fixture.files.pop(c.F45_SOURCES)
+        with self.assertRaises(c.Invalid):
+            c.manifest(self.fixture)
+
+    def test_reviewed_lock_still_requires_the_complete_binary_inventory(self):
+        packages = self.lock["kernel"]["packages"]
+        for replacement in (packages[:4], packages[:4] + [packages[0]]):
+            self.lock["kernel"]["packages"] = replacement
+            with self.repin_fixture_lock(), self.assertRaises(c.Invalid):
+                c.manifest(self.fixture)
+
+    def test_arbitrary_sidecar_or_invented_source_commit_is_rejected(self):
+        self.lock["image"]["checksum_url"] = "https://checksum.fixture.test/image.sha256"
+        with self.repin_fixture_lock(), self.assertRaises(c.Invalid):
+            c.manifest(self.fixture)
+        self.lock["image"]["checksum_url"] = self.lock["image"]["url"] + ".sha256"
+        self.lock["kernel"]["source_git_commit"] = "a" * 40
+        with self.repin_fixture_lock(), self.assertRaises(c.Invalid):
+            c.manifest(self.fixture)
+
+    def test_recipe_pin_and_archive_navigation_are_not_optional(self):
+        data = self.fixture.files["wiki/" + c.F45_RECIPE]
+        self.fixture.files["wiki/" + c.F45_RECIPE] = data.replace(b"1" * 64, b"0" * 64)
+        with self.assertRaisesRegex(c.Invalid, "recipe does not retain"):
+            c.manifest(self.fixture)
+        self.fixture.files["wiki/" + c.F45_RECIPE] = data
+        self.manifest["recipe"]["section"] = "Start"
+        self.update_manifest()
+        with self.assertRaisesRegex(c.Invalid, "generated recipe"):
+            c.manifest(self.fixture)
+
+    def test_schema1_reconstruction_does_not_read_f45_inputs(self):
+        manifest = fixture_manifest()
+        fixture = MemorySnapshot(manifest, self.fixture.read(c.RECIPE_PATH))
+        _, output = c.render(fixture)
+        self.assertNotIn(c.F45_RECIPE, output)
+        self.assertIn(b"### Start\n", output["_Sidebar.md"])
+
+    def test_rpm_failure_never_falls_back_to_binary_get(self):
+        checked = ck.validate(self.fixture, today=date(2026, 10, 19))
+        rpm = next(link for link in checked.links
+                   if link.page == c.F45_RECIPE and link.url.endswith(".rpm"))
+        requests = []
+
+        def request(method, url, address, deadline):
+            requests.append((method, url))
+            return h.Response(405, {})
+
+        checker = h.Checker(resolver=lambda host: ["93.184.216.34"], request=request)
+        with self.assertRaises(h.Unavailable):
+            checker.one(rpm.url, rpm.role, expected_sha256=rpm.expected_sha256, filename=rpm.filename)
+        self.assertEqual(requests, [("HEAD", rpm.url)])
 
 
 class ContentChecks(unittest.TestCase):
@@ -793,6 +975,103 @@ class NetworkChecks(unittest.TestCase):
             self.checker.one(self.url, "source")
         self.assertEqual(len(self.requests), h.MAX_REDIRECTS + 1)
 
+    SIGNED_FIELDS = {"AWSAccessKeyId": "FIXTURE0ACCESS0ID", "Expires": "1800000000",
+                     "Signature": "Zml4dHVyZSBzaWduYXR1cmUhIQ==",
+                     "response-cache-control": "max-age=60"}
+
+    def copr_chain(self, *, path_digest=None, fields=None, pulp=None, final=None):
+        """COPR -> Pulp -> signed S3 fixture, assembled at runtime to stay privacy-clean."""
+        digest = "ab" * 32
+        path_digest = path_digest or digest
+        filename = "kernel-fixture-1.0-1.fc45.riscv64.rpm"
+        origin = c.F45_COPR_PACKAGES + filename
+        domain = "-".join(digit * width for digit, width in zip("12345", (8, 4, 4, 4, 12)))
+        signed = ("https://" + h.COPR_S3_HOST + "/artifact/" + domain + "/" + path_digest[:2] + "/"
+                  + path_digest[2:] + "?" + urlencode(self.SIGNED_FIELDS if fields is None else fields))
+        self.responses = [h.Response(301, {"location": pulp or c.F45_PULP_PACKAGES + filename}),
+                          h.Response(302, {"location": signed}),
+                          final or h.Response(200, {"content-type": "application/octet-stream",
+                                                    "content-length": "261457"})]
+        self.requests.clear()
+        return origin, filename, digest, signed
+
+    def test_copr_signed_redirect_reaches_only_the_pinned_object(self):
+        origin, filename, digest, signed = self.copr_chain()
+        report = self.checker.all([ck.Link(c.F45_RECIPE, origin, "critical-artifact", digest, filename)], [])
+        self.assertEqual([item[0] for item in self.requests], ["HEAD"] * 3)
+        self.assertEqual(self.requests[-1][1], signed)
+        self.assertEqual((report[0]["url"], report[0]["status"]), (origin, "available-head"))
+        recorded = json.dumps(p.online_approval(report)) + json.dumps(report)
+        for secret in (h.COPR_S3_HOST, "Signature", self.SIGNED_FIELDS["Signature"]):
+            self.assertNotIn(secret, recorded)
+
+    def test_copr_signed_redirect_refusals_suppress_the_url(self):
+        cases = {
+            "other object": dict(path_digest="cd" * 32),
+            "extra field": dict(fields={**self.SIGNED_FIELDS, "token": "fixture"}),
+            "missing signature": dict(fields={k: v for k, v in self.SIGNED_FIELDS.items() if k != "Signature"}),
+            "unreviewed first hop": dict(pulp="https://mirror.fixture.test/k/kernel-fixture-1.0-1.fc45.riscv64.rpm"),
+            "object redirects again": dict(final=h.Response(302, {"location": "https://public.fixture.test/x"})),
+        }
+        for name, options in cases.items():
+            with self.subTest(case=name):
+                origin, filename, digest, signed = self.copr_chain(**options)
+                with self.assertRaises(c.Invalid) as raised:
+                    self.checker.one(origin, "critical-artifact", expected_sha256=digest, filename=filename)
+                self.assertNotIsInstance(raised.exception, h.Unavailable)
+                for secret in (h.COPR_S3_HOST, self.SIGNED_FIELDS["Signature"], "Signature="):
+                    self.assertNotIn(secret, str(raised.exception))
+                if name != "object redirects again":
+                    self.assertNotIn(signed, [item[1] for item in self.requests])
+
+    def test_signed_redirect_is_not_available_to_other_links(self):
+        origin, filename, digest, signed = self.copr_chain()
+        for url, role in ((origin, "artifact"), (origin, "source"), (origin, "resource"),
+                          ("https://public.fixture.test/" + filename, "critical-artifact")):
+            with self.subTest(role=role, url=url):
+                self.copr_chain()
+                critical = role.startswith("critical-")
+                with self.assertRaises(c.Invalid):
+                    self.checker.one(url, role, expected_sha256=digest if critical else None,
+                                     filename=filename if critical else None)
+                self.assertNotIn(signed, [item[1] for item in self.requests])
+        self.copr_chain()
+        self.responses = [h.Response(302, {"location": signed})]
+        with self.assertRaises(c.Invalid):
+            self.checker.one(origin, "critical-artifact", expected_sha256=digest, filename=filename)
+        self.assertEqual(len(self.requests), 1)
+
+    def test_refused_or_expired_signed_object_is_unavailable(self):
+        origin, filename, digest, _ = self.copr_chain(final=h.Response(403, {}))
+        with self.assertRaises(h.Unavailable):
+            self.checker.one(origin, "critical-artifact", expected_sha256=digest, filename=filename)
+        link = ck.Link(c.F45_RECIPE, origin, "critical-artifact", digest, filename)
+        self.copr_chain(final=h.Response(403, {}))
+        with self.assertRaises(c.Invalid):
+            self.checker.all([link], [{"page": c.F45_RECIPE, "url": origin, "reason": "Fixture only"}])
+
+    def test_copr_signed_object_shape(self):
+        _, _, digest, signed = self.copr_chain()
+        h.copr_signed_object(signed, digest)
+        _, _, _, variant = self.copr_chain(fields={**self.SIGNED_FIELDS, "Signature": "Zml4+dHVy/ZSBzaWduYXR1cmU="})
+        for url in (variant, variant.replace("%2B", "+")):
+            h.copr_signed_object(url, digest)
+        base, query = signed.split("?", 1)
+        malformed = (
+            signed.replace(h.COPR_S3_HOST, h.COPR_S3_HOST + ":8443", 1),
+            signed.replace("https://", "https://fixture@", 1),
+            signed.replace("https://", "http://", 1),
+            signed + "#fixture",
+            signed + "&" + query.split("&", 1)[0],
+            base + "?" + query.replace("Expires=1800000000", "Expires=soon"),
+            base.replace("/artifact/", "/other/") + "?" + query,
+            base + "?" + query + "&response-content-type=text%2Fhtml",
+        )
+        for index, url in enumerate(malformed):
+            with self.subTest(index=index), self.assertRaises(c.Invalid) as raised:
+                h.copr_signed_object(url, digest)
+            self.assertNotIn(url, str(raised.exception))
+
     def test_secret_query_never_requested_or_echoed(self):
         url = self.url + "?token=" + "fixture-value"
         with self.assertRaises(c.Invalid) as raised:
@@ -1237,6 +1516,94 @@ class GitFixture(unittest.TestCase):
         self.seed.run("push", "-q", "--", str(self.wiki_remote), commit + ":refs/heads/web-fixture")
         c.Git(self.wiki_remote).run("update-ref", "refs/heads/master", commit, tip)
         return commit
+
+
+class Fedora45PublicationFixtures(GitFixture):
+    def upgrade_source(self):
+        lock = fedora45_fixture_lock()
+        data = c.canonical(lock)
+        blob = c.blob_id(data)
+        pin = mock.patch.object(c, "F45_SOURCE_BLOBS", frozenset({blob}))
+        pin.start()
+        self.addCleanup(pin.stop)
+        self.manifest["schema"] = 2
+        self.manifest["recipe"]["section"] = "Resources"
+        self.manifest["recipe"]["navigation"]["installation"] = c.WIKI_URL + "/Fedora-44-Archive"
+        self.manifest["fedora45"] = {
+            "source": {"path": c.F45_SOURCES, "blob": blob}, "recipe": c.F45_RECIPE,
+        }
+        for target, section, kind in ((c.F45_RECIPE, "Start", "procedure"),
+                                      ("Fedora-44-Archive.md", "Resources", "reference")):
+            page = {"source": "wiki/" + target, "target": target,
+                    "title": target[:-3], "section": section, "kind": kind}
+            self.manifest["pages"].append(page)
+            extra = ("```sh\ncurl " + lock["image"]["url"] + "\nprintf '"
+                     + lock["image"]["sha256"] + "'\n```\n") if target == c.F45_RECIPE else ""
+            (self.root / page["source"]).write_bytes(page_bytes(extra=extra))
+        path = self.root / c.F45_SOURCES
+        path.parent.mkdir(parents=True)
+        path.write_bytes(data)
+        (self.root / c.MANIFEST).write_bytes(c.canonical(self.manifest))
+        self.online.artifacts[lock["image"]["checksum_url"]] = lock["image"]
+        self.commit("Fixture F45 source with retained F44 archive")
+        self.public_source()
+        return lock
+
+    def test_f45_receipt_preserves_recognition_of_previous_schema1_publication(self):
+        self.publish(self.prepare())
+        previous = c.Git(self.wiki_remote).commit("HEAD")
+        lock = self.upgrade_source()
+        prepared = self.prepare(adopt=False)
+        receipt, _ = p.read_receipt(self.root, *prepared)
+        self.assertEqual(receipt["wiki"]["expected_oid"], previous)
+        self.assertEqual(sum(link["role"].startswith("critical-")
+                             for link in receipt["online_approval"]), 11)
+        self.assertEqual(self.publish(prepared), "published")
+        wiki = c.Git(self.wiki_remote)
+        self.assertTrue(wiki.ancestor(previous, wiki.commit("HEAD")))
+        for package in lock["kernel"]["packages"]:
+            self.assertIn(("HEAD", package["url"]), self.online.requests)
+            self.assertNotIn(("GET", package["url"]), self.online.requests)
+        _, output = c.render(c.Snapshot(self.root))
+        self.assertIn(b"Archived Fedora 44 reference", output["Fedora-Recipe.md"])
+        self.assertTrue(output["Fedora-Recipe.md"].endswith(
+            c.recipe_body(c.Snapshot(self.root).read(c.RECIPE_PATH), self.manifest["recipe"]),
+        ))
+
+    def test_unavailable_f45_rpm_blocks_preparation_without_changing_published_wiki(self):
+        self.publish(self.prepare())
+        previous = c.Git(self.wiki_remote).commit("HEAD")
+        pushes = len(self.remote.pushes)
+        lock = self.upgrade_source()
+        self.online.unavailable.add(lock["kernel"]["packages"][-1]["url"])
+        with self.assertRaisesRegex(c.Invalid, "public link unavailable"):
+            self.prepare(adopt=False)
+        self.assertEqual(c.Git(self.wiki_remote).commit("HEAD"), previous)
+        self.assertEqual(len(self.remote.pushes), pushes)
+
+    def test_reviewed_lock_refresh_retains_previous_schema2_reconstruction(self):
+        lock = self.upgrade_source()
+        self.publish(self.prepare())
+        previous = c.Git(self.wiki_remote).commit("HEAD")
+        lock["kernel"]["build_id"] += 1
+        release = "7.2.9-300.0.riscv64.omni.fc45.riscv64"
+        lock["kernel"]["kernel_release"] = release
+        lock["kernel"]["source_rpm"] = "kernel-" + release.removesuffix(".riscv64") + ".src.rpm"
+        for package in lock["kernel"]["packages"]:
+            package["filename"] = package["name"] + "-" + release + ".rpm"
+            package["url"] = package["url"].rsplit("/", 1)[0] + "/" + package["filename"]
+        data = c.canonical(lock)
+        pin = c.blob_id(data)
+        (self.root / c.F45_SOURCES).write_bytes(data)
+        self.manifest["fedora45"]["source"]["blob"] = pin
+        (self.root / c.MANIFEST).write_bytes(c.canonical(self.manifest))
+        self.commit("Fixture reviewed pin refresh retaining previous source")
+        self.public_source()
+        with mock.patch.object(c, "F45_SOURCE_BLOBS", c.F45_SOURCE_BLOBS | {pin}):
+            prepared = self.prepare(adopt=False)
+            self.assertEqual(self.publish(prepared), "published")
+        wiki = c.Git(self.wiki_remote)
+        self.assertTrue(wiki.ancestor(previous, wiki.commit("HEAD")))
 
 
 class SnapshotFixtures(GitFixture):

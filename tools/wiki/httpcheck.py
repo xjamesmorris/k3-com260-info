@@ -14,7 +14,7 @@ import ssl
 import subprocess
 import sys
 import time
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urljoin, urlsplit, urlunsplit
 import zlib
 
 import checks
@@ -28,6 +28,13 @@ MAX_HEADERS = 32 * 1024
 MAX_REDIRECTS = 3
 RETRIES = 3
 RESERVED = ("example.com", "example.org", "example.net")
+# COPR's Pulp content service answers a locked RPM URL with a short-lived,
+# anonymous S3 link to the object stored under its own SHA-256.
+COPR_S3_HOST = "copr-pulp-prod.s3.amazonaws.com"
+S3_SIGNED_REQUIRED = frozenset({"AWSAccessKeyId", "Expires", "Signature"})
+S3_SIGNED_OPTIONAL = frozenset({"response-cache-control", "response-content-disposition"})
+S3_OBJECT = re.compile(r"/artifact/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                       r"/([0-9a-f]{2})/([0-9a-f]{62})")
 
 
 class Unavailable(c.Invalid):
@@ -37,6 +44,38 @@ class Unavailable(c.Invalid):
 def example_host(host: str) -> bool:
     return (host in RESERVED or any(host.endswith("." + domain) for domain in RESERVED)
             or host.endswith((".example", ".invalid", ".test")))
+
+
+def copr_signed_object(url: str, expected_sha256: str) -> None:
+    """Accept only the signed S3 link naming the pinned RPM's own SHA-256.
+
+    The signed query is used for the single HEAD request and never reported:
+    every refusal suppresses the URL, and results keep the locked COPR URL.
+    """
+    invalid = "unexpected COPR signed-object redirect; URL suppressed"
+    c.require(isinstance(url, str) and len(url) <= 4096
+              and not re.search(r"[\x00-\x20\x7f\\]", url), invalid)
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+        pairs = parse_qsl(parts.query, keep_blank_values=True, strict_parsing=True)
+    except ValueError:
+        raise c.Invalid(invalid) from None
+    match = S3_OBJECT.fullmatch(parts.path)
+    c.require(parts.scheme == "https" and parts.netloc == COPR_S3_HOST and port is None
+              and not parts.fragment and match is not None
+              and match[1] + match[2] == expected_sha256,
+              "COPR redirect does not name the pinned content-addressed RPM; URL suppressed")
+    names = [name for name, _ in pairs]
+    values = dict(pairs)
+    c.require(len(names) == len(values)
+              and S3_SIGNED_REQUIRED <= set(values) <= (S3_SIGNED_REQUIRED | S3_SIGNED_OPTIONAL)
+              and all(0 < len(value) <= 512 and not re.search(r"[\x00-\x1f\x7f]", value)
+                      for value in values.values())
+              and re.fullmatch(r"[A-Z0-9]{16,128}", values["AWSAccessKeyId"])
+              and re.fullmatch(r"\d{9,12}", values["Expires"])
+              # Base64 or URL-safe base64; an unencoded "+" arrives decoded as a space.
+              and re.fullmatch(r"[A-Za-z0-9+/ _-]{16,128}={0,2}", values["Signature"]), invalid)
 
 
 def public_addresses(host: str, resolver) -> list[str]:
@@ -234,8 +273,17 @@ class Checker:
         redirects = 0
         tried_get = False
         seen = set()
+        # Only an exact locked F45 COPR RPM may take the reviewed signed-S3 hop.
+        copr = (role == "critical-artifact" and isinstance(filename, str)
+                and isinstance(expected_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", expected_sha256)
+                and "/" not in filename and filename.endswith(".rpm")
+                and url == c.F45_COPR_PACKAGES + filename)
+        signed = False
         while True:
-            checks.url_shape(current)
+            if signed:
+                copr_signed_object(current, expected_sha256)
+            else:
+                checks.url_shape(current)
             parts = urlsplit(current)
             if checksum:
                 c.require(parts.path.rsplit("/", 1)[-1] == filename + ".sha256"
@@ -281,10 +329,16 @@ class Checker:
                     c.require(mime in ("text/html", "text/plain"), "GET refused a non-text or untyped response")
                 return "available-" + method.lower()
             if response.status in (301, 302, 303, 307, 308):
+                c.require(not signed, "COPR signed object must answer directly; redirect refused")
                 c.require("location" in response.headers and redirects < MAX_REDIRECTS,
                           "missing redirect location or redirect limit exceeded")
                 redirected = urljoin(current, response.headers["location"])
-                checks.url_shape(redirected)
+                if (copr and redirects == 1 and current == c.F45_PULP_PACKAGES + filename
+                        and redirected.startswith("https://" + COPR_S3_HOST + "/")):
+                    copr_signed_object(redirected, expected_sha256)
+                    signed = True
+                else:
+                    checks.url_shape(redirected)
                 c.require(not checks.ARTIFACT.search(urlsplit(redirected).path) or method == "HEAD",
                           "GET redirect to a binary artifact refused")
                 redirects += 1

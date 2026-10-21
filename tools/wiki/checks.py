@@ -441,6 +441,13 @@ def links(snapshot, m: dict, output: dict[str, bytes]) -> list[Link]:
         filename = urlsplit(artifact["url"]).path.rsplit("/", 1)[-1]
         for field, role in (("url", "critical-artifact"), ("checksum_url", "critical-checksum")):
             external.add(Link("Fedora-Recipe.md", artifact[field], role, artifact["sha256"], filename))
+    if m["schema"] == 2:
+        for artifact in c.fedora45_artifacts(snapshot, m["fedora45"]):
+            external.add(Link(c.F45_RECIPE, artifact["url"], "critical-artifact",
+                              artifact["sha256"], artifact["filename"]))
+            if "checksum_url" in artifact:
+                external.add(Link(c.F45_RECIPE, artifact["checksum_url"], "critical-checksum",
+                                  artifact["sha256"], artifact["filename"]))
     return sorted(external, key=lambda link: (not link.role.startswith("critical-"), link.page, link.url, link.role))
 
 
@@ -479,6 +486,8 @@ def validate(snapshot, *, today: date | None = None) -> Checked:
     allowances = validation_exceptions(m, snapshot, today)
     for path in (c.MANIFEST, c.EXCEPTIONS, c.RECIPE_PATH):
         require_private_safe(snapshot.read(path), path, allowances, approved_blob=c.RECIPE_BLOB)
+    if m["schema"] == 2:
+        require_private_safe(snapshot.read(c.F45_SOURCES), c.F45_SOURCES)
     for page in m["pages"]:
         data = snapshot.read(page["source"], page=True)
         require_private_safe(data, page["source"], allowances)

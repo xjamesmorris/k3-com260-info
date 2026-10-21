@@ -2,18 +2,18 @@
 
 # Maintain and update
 
-This page is for operators maintaining the recorded Fedora 44 NVMe system
-after the bootstrap installation or optional KVM-host transition. It
-distinguishes running, installed, and temporarily selected boot sets when
-Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot remains the manual selector. Use it
-to plan kernel and package changes without assuming a conventional GRUB,
-grubby, or RPM-managed boot workflow.
+This page is for operators maintaining the recorded Fedora 45 packaged
+host on NVMe. It distinguishes running, installed, and temporarily selected
+boot sets under Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot. It is not a GRUB,
+grubby, release-upgrade, or automatic rollback procedure.
 
 **Installing a kernel does not select it for this direct-boot route.** The
-exercised change was a side-by-side installation followed by temporary U-Boot
-selection, with the older boot files retained. Use
-[Fedora-Recipe: build and install the KVM host](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#build-and-install-the-kvm-host)
-for the commands. This page explains the identities and decisions around them.
+[recorded F45 changes](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md)
+installed 7.2.8 beside 7.2.7 on p4/p5, most recently after the October 20
+fresh installation, then used temporary U-Boot selections. Use the
+[F45 package-update section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#install-the-pinned-kernel-update)
+and [updated-host boot checks](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#boot-and-check-the-updated-host)
+for commands, not this orientation page.
 
 ## Running, installed, and selected are different
 
@@ -26,75 +26,91 @@ for the commands. This page explains the identities and decisions around them.
 
 Do not use the RPM database, a BLS entry, or the `/boot/dtb` symlink alone as
 evidence of the running or temporarily selected kernel. The
-[manual installer](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/scripts/k3-install-manual-kernel.sh)
-does not update the RPM database and preserves that symlink.
+[public F45 installer](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/README.md#interfaces-and-dependencies)
+preserves the saved DTB link; the recorded installation left it pointing
+at 7.2.7 even when 7.2.8 was selected manually.
 
 ## Keep each boot set together
 
-The bootstrap release is
-`7.1.5-201.0.riscv64.omni.fc44.riscv64`, from the Fedora 44 Omni July 31
-image. The later host release is `7.3.0-rc4-k3-kvm-host-a1`, built from the
-pinned source plus 14 patches. These are separate stages, not interchangeable
-files with similar names.
+The F45 bootstrap is **`7.2.7-300.0.riscv64.omni.fc45.riscv64`**, from
+Beta compose `20260923.2`. The updated release is
+**`7.2.8-300.0.riscv64.omni.fc45.riscv64`**, COPR build **`11035571`**.
+Keep the [exact public lock](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/files/sources.lock.json)
+with the helpers; similar names or a newer repository candidate are not
+equivalent inputs.
 
-| Artifact | Bootstrap provenance | Source-built host provenance |
+| Artifact | F45 bootstrap provenance | Pinned F45 update provenance |
 | --- | --- | --- |
-| `Image-<release>` | Raw RISC-V Image extracted from that release's packaged zstd EFI zboot `vmlinuz`, with the recipe's header and size checks. | Image built from the pinned, patched tree and final configuration. |
-| DTB | Separately named `k3-com260-bootstrap.dtb`, derived from the same package's DTB with **both** `dldo4` and `hub-reset` properties added. Original DTB retained. | `dtb-<release>/spacemit/k3-com260-ifx.dtb`, from the same build as the Image; PCIe enablement and the **dldo4-only** source fix, not the USB/hub series. |
-| `initramfs-<release>.img` | The matching packaged initramfs selected during NVMe preparation. | Generated on the K3 by the installer for the new release, after installing its modules and running `depmod`. It is not a workstation-built stage payload. |
-| `/lib/modules/<release>` | The modules supplied with the bootstrap system. | The staged modules for that exact kernel release, with the builder's relocation, BTF, and vermagic checks. |
-| Configuration and map | Retain package/image identity and the recorded original-file hashes. | Preserve `config-<release>`, `System.map-<release>`, the seed/final-config identities, source pin, patch order, and stage manifest. |
+| `Image-<release>` | Raw RISC-V Image extracted from the image's packaged EFI zboot `vmlinuz`. | Raw Image extracted from the exact installed 7.2.8 package; verify the container/header and output rather than renaming `vmlinuz`. |
+| DTB | The populate helper preserves the packaged DTB and creates a separately named bootstrap DTB with **both** `dldo4` and `hub-reset` enabled. | The installer installs the packaged DTB and also creates the separately named 7.2.8 bootstrap DTB: a copy of the 7.2.7 one when the packaged 7.2.7/7.2.8 DTBs are byte-identical, as they are for these pins, otherwise generated by `make-bootstrap-dtb.sh`. Check its summary before selecting the file. |
+| `initramfs-<release>.img` | Matching image/bootstrap initramfs, identified during preparation. | Generated for the installed release. The recorded host-only initramfs included Btrfs and NVMe support; inspect the actual regenerated file before boot. |
+| `/lib/modules/<release>` | Modules supplied with the bootstrap system. | Modules from the locked binary RPMs, kept release-qualified beside 7.2.7. |
+| Package/configuration identity | Exact image hash and bootstrap release. | Five binary RPM names, NEVRAs and SHA-256 pins, plus installed config/map and generated-file identities. Source Git commit remains unproven. |
 
-Matching names are necessary, but not sufficient provenance. Keep the
-recipe's original-file hashes, verified stage manifest, and the installed
-Image/DTB/initramfs hashes and load sizes. A new initramfs has its own
-identity: do not describe the workstation stage checksum as verification of
-that later-generated file. See
-[kernel and device-tree development](https://github.com/xjamesmorris/k3-com260-info/wiki/Kernel-and-Device-Tree-Development)
-for the source/configuration checks.
+The recorded **40,109-byte pre-fan bootstrap DTB**, initramfs sizes and hashes
+are observations, not universal expected outputs after regeneration.
+Preserve the actual Image/DTB/initramfs hashes and load sizes for each
+boot. Do not claim an edited/recompiled DTB is byte-identical to its
+packaged input, or extend the exact-version comparison to future releases.
 
 ## The exercised maintenance sequence
 
-**Build and stage on the Linux workstation.** Follow the
-[host-build section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#build-and-install-the-kvm-host)
-with a fresh output area. The expected release and stage checksums are
-checkpoints, not optional diagnostics. Stop if the pinned object, 14-patch
-tree, release, or manifest cannot be reproduced; choosing a newer branch tip
-is a different experiment.
+The transition was performed on the recorded p4/p5 system twice: on
+October 19, before the public helpers existed, and on October 20 with the
+public fetch, transfer and installer helpers after the fresh installation.
 
-**Transfer, then install beside the running kernel.** The recipe separates
-the transfer from the privileged K3-local installation. The
-[transfer helper](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/scripts/transfer-omni-baseline-to-k3.sh)
-checks selected transferred artifacts; it does not boot or install them.
-The installer refuses an already present candidate release and adds the new
-set without replacing the running set. Installation is not transactional:
-an interruption can leave candidate files behind. Stop at the failure rather
-than deleting paths to defeat the guard or assuming a completed install.
+**Verify and transfer the locked binary packages.** The
+[bundle inventory](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/README.md)
+describes the five-binary-RPM fetch and transfer interfaces. Digests and RPM
+metadata must match before installation. Recorded inspection reported
+`NOKEY`: hash agreement is not verified publisher-signature authentication.
+The original SRPM URL was unavailable during the October 19 review; it is
+provenance-only, not an installation dependency or permission to substitute
+a different SRPM.
+
+**Install beside the running kernel, then review the summary.** The
+recipe separates transfer from the privileged K3-local installation. The
+installer refuses a running or already installed candidate and preserves
+the old `/boot/dtb` link. A failure may still leave partial package/system
+changes: stop and inspect them rather than deleting paths to defeat guards.
+The installer also creates the separately named 7.2.8 bootstrap DTB, copied
+only when the packaged 7.2.7 and 7.2.8 DTBs are byte-identical and otherwise
+generated; if neither is possible, it stops after installing and says so.
+Review its DTB line and load sizes before any boot.
 
 **Select the candidate at an attended reset.** Keep serial and physical
-reset/power access available. In the same
-[host-transition section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#build-and-install-the-kvm-host),
-derive the root UUID from the actual mounted root and record all three
-installed file sizes. At U-Boot, compare every load size and check the load
-ranges do not overlap. An undefined address, failed load, unexpected size,
-wrong UUID, continuation prompt, or malformed boot arguments is a stop point
-before `booti`. **Never run `env save` or `saveenv`.**
+reset/power access available. Each F45 boot is a manual U-Boot sequence,
+because the saved default is never changed. In the same
+[updated-host boot section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#boot-and-check-the-updated-host),
+use the root UUID from the populate summary, checked against the mounted
+root, and the installer summary's three file sizes. At U-Boot, compare every
+load size and check the load ranges do not overlap. An undefined address,
+failed load, unexpected size, wrong UUID, continuation prompt, or malformed
+boot arguments is a stop point before `booti`. **Never run `env save` or
+`saveenv`.**
 
-**Confirm what actually returned.** The recipe checks the running release,
-root mount, KVM-related kernel messages, `/dev/kvm` access, and QEMU package
-and executable versions. A login prompt alone is insufficient: the earlier
-regulator failure occurred after early boot. Only then proceed to the
-[recorded guest section](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#prepare-and-run-the-persistent-guest).
-A host boot does not by itself establish a guest or persistence result.
+**Confirm what actually returned.** Check the exact running release,
+intended root and `/boot`, storage errors, kernel messages and network/SSH
+over the recipe's attended interval. The three October 20 7.2.8 boots had
+DHCPv4 within about 23 seconds, but one October 19 boot took about
+7.5 minutes. These attended boots do not establish prompt networking on
+every boot, endurance, or thermal safety.
+Host KVM initialization and `/dev/kvm` were recorded; no F45 QEMU, guest or
+persistence result follows from them.
 
 ## Preserve the fallback and recovery access
 
 Keep the original bootstrap files, its separately patched DTB, matching
 initramfs/modules, and their identities. If a candidate fails, the retained
 bootstrap's
-[temporary boot selection](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#boot-the-bootstrap-fedora-host)
-remains the recorded route when those files and the NVMe root are intact.
-Do not launch the guest on that older Omni bootstrap kernel.
+[temporary boot selection](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#boot-the-bootstrap-fedora-host)
+is the fallback described by the recipe when those files and the intended
+NVMe root are intact. Both F45 records retained the same-disk F44
+installation and its saved boot default; no recorded boot returned to 7.2.7
+after the update. On October 20, a reboot without interrupting autoboot
+returned to F44, and the partition table, F44 boot files and UFS ESP were
+byte-identical to the before-state; see
+[Return to the saved default](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-45-Recipe#return-to-the-saved-default).
 
 Retained files are not an automatic rollback system. Reset discards the
 temporary selection, not disk writes, and the existing saved path may boot
@@ -107,9 +123,7 @@ does not repair or roll back Fedora files on NVMe.
 
 ## What a package update does not do
 
-The recipe's
-[snapshot-update boundary](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#updating-this-snapshot)
-is explicit: a packaged kernel update needs another raw-Image extraction and
+The F45 route requires another raw-Image extraction and
 deliberate U-Boot selection. Installing newer packages does not automatically
 replace the manually selected Image/DTB/initramfs triple with a matched,
 tested set. A familiar filename or successful package transaction is not a
@@ -121,22 +135,45 @@ by this work. Retaining an older boot set is a recovery measure, not a claim
 about its security status. New versions need their own reviewed evidence;
 this page does not supply an unperformed upgrade walkthrough.
 
+The recorded F45-only fwupd service/timer masking followed unexpected
+read-write ESP mounts on this non-UEFI host on October 19; the populate
+helper's tested `mask` choice now writes the masks before first boot. Use
+the recipe's reversible, release-scoped explanation; do not generalize it
+into a firmware-updater policy or assurance that other disks are isolated.
+Cooling-fan work remains deferred: the fan runs at full speed, neither
+kernel exposed SoC thermal zones, and there is no unattended-operation or
+thermal-protection assurance.
+
+## Historical F44 maintenance reference
+
+The [F44 archive](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-44-Archive)
+keeps the 7.1.5 bootstrap and `7.3.0-rc4-k3-kvm-host-a1` source-built
+host separate. Its build/transfer/manual-install sequence, 14-patch tree,
+configuration and toolchain guards are optional historical development
+material, **not F45 package prerequisites**. Use the archived
+[Fedora-Recipe host transition](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-Recipe#build-and-install-the-kvm-host)
+as the sole command authority for that stack, and the
+[kernel development reference](https://github.com/xjamesmorris/k3-com260-info/wiki/Kernel-and-Device-Tree-Development)
+for its rationale. Do not mix the F44 dldo4-only source-built DTB with the
+F45 two-property bootstrap preparation.
+
 ## Sources
 
-- [Preserved Fedora/KVM record](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md) and [kernel provenance](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/README.md): the dated maintenance and artifact contract.
+- [F45 host results](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md), [exact lock](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/files/sources.lock.json), and [bundle interfaces](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/README.md): recorded package transition, guards and remaining provenance and untested-route gaps.
+- [Preserved F44 record](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/README.md) and [kernel provenance](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/k3-com260-fedora-howto/files/kernel/README.md): historical source-build contract.
 - [Recovery tool and recorded image results](https://github.com/xjamesmorris/k3-com260-info/blob/57400da095e944c75e63154b1c187e18a3ac3359/tools/README.md): destructive scope; manifest pins are separate from successful flashing.
 - [U-Boot `booti` documentation](https://docs.u-boot.org/en/latest/usage/cmd/booti.html): upstream command semantics only, not a replacement for the recorded board-specific boot sequence.
 
 ## Technical notes
 
-**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot, and the recorded Fedora 44 NVMe route. `k3-com260-ifx` is a DT filename, not proof of the carrier PCB revision.
+**Applies to:** Firefly-sold 8 GiB K3-CoM260 kit, Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot, and the recorded Fedora 45 NVMe package route; F44 source-built maintenance is historical. `k3-com260-ifx` is a DT filename, not proof of the carrier PCB revision.
 
-**Evidence:** The public September 25 Fedora/KVM snapshot and its exported build, transfer, and installation helpers; not a general Fedora upgrade procedure.
+**Evidence:** Recorded public October 20 and October 19 F45 results, pins and helper interfaces; preserved September 25 F44 sources. External U-Boot semantics retain their September 27 review, not a new release or firmware check.
 
-**Source review:** 2026-09-27.
+**Source review:** 2026-10-20.
 
-**Hardware observation:** 2026-09-25 recorded Fedora/NVMe and KVM-host setup; individual historical step dates are not specified. No new hardware run or end-to-end rerun of the portable bundle.
+**Hardware observation:** 2026-10-20 fresh F45 installation into existing p4/p5 partitions: 7.2.7 bootstrap, exact 7.2.8 update and three attended 7.2.8 boots; 2026-10-19 side-by-side F45 bootstrap and three attended pre-fan 7.2.8 boots; 2026-09-25 archived F44 setup. No F45 guest test here.
 
-**Destructive operations:** The linked host transition writes new files under `/boot` and `/lib/modules` and requires an attended reset. Reimaging destroys the selected disk; factory recovery rewrites NOR and all UFS contents. Neither is a routine update step.
+**Destructive operations:** The linked F45 installer changes the RPM database, `/boot` and modules; boot checks require attended resets. Repopulating the F45 partitions destroys their contents; factory recovery rewrites NOR and all UFS contents. Neither is a routine update step.
 
 **Previous:** [Install Fedora](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora) | **Next:** [Diagnostics and known limits](https://github.com/xjamesmorris/k3-com260-info/wiki/Diagnostics-and-Known-Limits) | [Home](https://github.com/xjamesmorris/k3-com260-info/wiki/Home)
