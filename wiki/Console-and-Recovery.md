@@ -63,6 +63,25 @@ All Fedora boot choices in the recipes are temporary: never run `env save` or
 `saveenv`. Reset follows the existing saved path, which may boot Bianbu or
 the retained F44 installation, not the temporarily selected F45 kernel.
 
+## Optional USB button controller
+
+The standalone
+[`k3ctl` bundle](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md)
+provides ESP32-C3 firmware, a Linux Python client, a udev rule and
+hardware-free client tests for the matching Firefly-carrier header.
+**Only `reset` has been tested on hardware so far**, as reported by the
+maintainer; its test date and software/build versions were not recorded.
+Recovery entry, power control, manual line commands, sensing and display
+behavior remain unverified. Match the header and read the bundle's electrical
+and device-selection cautions before connecting anything.
+
+It is optional, not a Fedora prerequisite, and does not carry the K3 serial
+console. Keep the separate serial adapter and physical reset/power access.
+An abrupt reset can lose unsaved data and follows the existing saved boot
+path, not the last temporary Fedora selection. The flashing script does not
+invoke `k3ctl` and has no `-r` option; this does not replace the recorded
+manual recovery sequence below or establish a new factory-flash result.
+
 ## Decide whether recovery is needed
 
 | Observation | Next decision |
@@ -119,13 +138,13 @@ the normal serial checkpoint before returning to the Fedora recipe.
 
 **Applies to:** Recorded Firefly-carrier K3-CoM260 kit and Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; carrier PCB revision unknown.
 
-**Evidence:** Public October 20 and October 19 F45 host scope and preserved Fedora serial/Firefly recovery records. The conditional V2.1 UART/ground reference retains its September 27 review; no new pinout or electrical check was performed.
+**Evidence:** Public October 20 and October 19 F45 host scope, preserved Fedora serial/Firefly recovery records, and the maintainer-reported reset-only k3ctl status. The conditional V2.1 UART/ground reference retains its September 27 review; no new pinout or electrical check was performed.
 
-**Source review:** 2026-10-20.
+**Source review:** 2026-10-26.
 
-**Hardware observation:** 2026-10-20 and 2026-10-19 F45 temporary boots in the public host record (on 2026-10-20, after a fresh installation into existing p4/p5 partitions: one 7.2.7 bootstrap, the exact 7.2.8 update and three attended 7.2.8 boots) and 2026-09-25 archived serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date. No recovery test was added here.
+**Hardware observation:** 2026-10-20 and 2026-10-19 F45 temporary boots in the public host record (on 2026-10-20, after a fresh installation into existing p4/p5 partitions: one 7.2.7 bootstrap, the exact 7.2.8 update and three attended 7.2.8 boots) and 2026-09-25 archived serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date. Only k3ctl reset is maintainer-reported as tested; its date and software/build versions were not recorded. No hardware was operated for this integration, and no USB recovery result was added.
 
-**Destructive operations:** Serial setup does not erase storage. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
+**Destructive operations:** Serial setup does not erase storage. USB reset abruptly restarts the K3 and can lose unsaved data. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
 
 **Previous:** [Hardware and setup](https://github.com/xjamesmorris/k3-com260-info/wiki/Hardware-and-Setup).
 **Next:** [Install Fedora](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora).

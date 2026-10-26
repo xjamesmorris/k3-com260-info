@@ -46,8 +46,13 @@ The focused standalone documents and tools remain available:
   remains preserved with helper scripts and the
   [kernel configuration and 14-patch bundle](k3-com260-fedora-howto/files/kernel/README.md).
   These are optional historical development references, not F45 requirements.
-- [Tools](tools/README.md): currently a Bianbu factory-flashing script using
-  stock `fastboot`, with usage, recovery instructions, and recorded results.
+- [Tools](tools/README.md): Bianbu factory flashing using stock `fastboot`
+  and USB header-button control, with usage, safety limits, and recorded results.
+- [k3ctl](tools/k3ctl/README.md): ESP32-C3 firmware, a Python client, udev
+  rules, and hardware-free tests for USB button control on the Firefly carrier.
+  **Only `reset` has been tested on hardware so far**; recovery, power control,
+  and the other functions remain unverified. It is not integrated into the
+  flashing script.
 - [Flashing development context](tools/k3-flash-bianbu-HANDOFF.md): protocol
   findings, design decisions, and ideas for further work.
 

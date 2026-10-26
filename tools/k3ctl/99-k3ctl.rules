@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# k3ctl dongle: ESP32-C3 native USB-Serial/JTAG (Espressif 303a:1001).
+# Install with sudo after reviewing the device match; see README.md.
+#
+# If more than one ESP32-C3 is plugged into the host, pin the rule to this one
+# with its serial (the chip's MAC):  udevadm info -a -n /dev/ttyACM0 | grep serial
+# and add   ATTRS{serial}=="xx:xx:xx:xx:xx:xx",   before SYMLINK.
+#
+# ID_MM_DEVICE_IGNORE keeps ModemManager from probing the port with AT
+# commands (harmless to the firmware — it answers ERR — but it can hold the
+# port open for seconds right after plug-in).
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", \
+    SYMLINK+="k3ctl", MODE="0660", GROUP="dialout", TAG+="uaccess", ENV{ID_MM_DEVICE_IGNORE}="1"

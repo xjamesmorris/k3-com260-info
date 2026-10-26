@@ -4,10 +4,36 @@ Tools for working with the [SpacemiT K3](https://www.spacemit.com/) RISC-V
 compute module — developed and tested against a **K3-CoM260** on a Firefly
 carrier board.
 
-Currently one tool: **`k3-flash-bianbu.sh`**, which factory-flashes a board
-from an official Bianbu K3 release tarball using plain `fastboot`.
+| Tool | Purpose | Hardware status |
+| --- | --- | --- |
+| [`k3-flash-bianbu.sh`](k3-flash-bianbu.sh) | Factory flash an official Bianbu K3 release using stock `fastboot` | See the [image results](#status); a manifest pin is not a flash result |
+| [`k3ctl`](k3ctl/README.md) | Control header buttons over USB using an ESP32-C3 dongle | **Only `reset` tested so far**; all other functionality unverified |
 
-> **This erases the board.** It rewrites the NOR firmware and wipes every UFS
+## k3ctl: USB button control
+
+[`k3ctl/`](k3ctl/README.md) contains the ESP32-C3 firmware, a standard-library
+Python client, a Linux udev rule, and tests against a fake dongle on a
+pseudo-terminal. Its guide covers the conditional Firefly header wiring,
+firmware build requirements, host setup, command protocol, and GPL-2.0-only
+licensing.
+
+**Only `reset` has a maintainer-reported hardware test.** The test date and
+software versions were not recorded. Recovery entry, power control, manual
+line commands, status/power sensing, and display behavior remain unverified;
+host tests are not hardware evidence. Reset abruptly restarts the K3 and can
+lose unsaved data.
+
+This is a standalone tool, not a Fedora installation prerequisite.
+`k3-flash-bianbu.sh` does not invoke it and has no `-r` option; keep the
+documented manual recovery procedure until an attended result establishes
+any alternative.
+
+## k3-flash-bianbu.sh: factory flashing
+
+Factory-flash a board from an official Bianbu K3 release tarball using plain
+`fastboot`.
+
+> **Factory flashing erases the board.** It rewrites the NOR firmware and wipes every UFS
 > partition, including the environment. An attached NVMe drive is *not*
 > touched. Do not run it against a board whose contents you need.
 

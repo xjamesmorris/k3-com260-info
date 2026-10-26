@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-only
+"""k3ctl — push the Firefly-carrier K3-CoM260's header buttons over USB.
+
+Talks to the ESP32-C3 dongle running firmware/k3ctl (see README.md). The
+dongle does the timing; this client sends one command line and relays the
+one-line reply. Only reset has a maintainer-reported hardware test; other
+functions are unverified. Read README.md before wiring or issuing commands.
+
+    k3ctl reset                 tap SYS_RST
+    k3ctl recovery              hold FC_REC, tap RST, release -> BootROM/fastboot
+    k3ctl power [ms]            tap SLEEP/WAKE
+    k3ctl press <line> [ms]     tap rst|fcrec|pwr
+    k3ctl hold <line>           assert (30 s release timer; see README limits)
+    k3ctl release <line>|all
+    k3ctl status | ping | help
+    k3ctl raw '<line>'          send a verbatim protocol line
+
+Device: $K3CTL_DEV, else /dev/k3ctl (udev rule in 99-k3ctl.rules).
+Exit status: 0 = OK reply, 1 = ERR reply, 2 = device/communication problem.
+
+Standard library only, so it runs on a bare host.
+"""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import os
+import select
+import sys
+import termios
+import time
+
+DEFAULT_DEV = os.environ.get("K3CTL_DEV", "/dev/k3ctl")
+PING_WINDOW_S = 4.0     # the dongle may reboot when the port opens; wait it out
+PING_INTERVAL_S = 0.5
+DEFAULT_TIMEOUT_S = 5.0
+
+
+class K3ctlError(Exception):
+    """Device or protocol failure (exit status 2)."""
+
+
+def usage_error(msg: str) -> None:
+    """Argument problems exit 2 like argparse does, without touching the device."""
+    print(f"k3ctl: {msg}", file=sys.stderr)
+    raise SystemExit(2)
+
+
+def open_port(path: str, lock_wait_s: float = 10.0) -> int:
+    """Open the CDC port raw, non-blocking, exclusively locked."""
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+    except OSError as e:
+        raise K3ctlError(f"cannot open {path}: {e.strerror}") from e
+
+    deadline = time.monotonic() + lock_wait_s
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except BlockingIOError:
+            if time.monotonic() > deadline:
+                os.close(fd)
+                raise K3ctlError(f"{path} is busy (another k3ctl running?)")
+            time.sleep(0.1)
+
+    try:
+        attrs = termios.tcgetattr(fd)
+    except termios.error as e:
+        os.close(fd)
+        raise K3ctlError(f"{path} is not a serial port: {e}") from e
+    iflag, oflag, cflag, lflag, ispeed, ospeed, cc = attrs
+    iflag &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | termios.ISTRIP
+               | termios.INLCR | termios.IGNCR | termios.ICRNL | termios.IXON)
+    oflag &= ~termios.OPOST
+    lflag &= ~(termios.ECHO | termios.ECHONL | termios.ICANON | termios.ISIG
+               | termios.IEXTEN)
+    cflag &= ~(termios.CSIZE | termios.PARENB | termios.HUPCL)  # no DTR drop on close
+    cflag |= termios.CS8 | termios.CLOCAL | termios.CREAD
+    cc[termios.VMIN] = 0
+    cc[termios.VTIME] = 0
+    termios.tcsetattr(fd, termios.TCSANOW,
+                      [iflag, oflag, cflag, lflag, termios.B115200, termios.B115200, cc])
+    termios.tcflush(fd, termios.TCIOFLUSH)
+    return fd
+
+
+class LineReader:
+    """Accumulates bytes from a non-blocking fd and yields complete lines."""
+
+    def __init__(self, fd: int) -> None:
+        self.fd = fd
+        self.buf = b""
+
+    def readline(self, timeout_s: float) -> str | None:
+        deadline = time.monotonic() + timeout_s
+        while True:
+            nl = self.buf.find(b"\n")
+            if nl >= 0:
+                line, self.buf = self.buf[:nl], self.buf[nl + 1:]
+                return line.decode("utf-8", "replace").rstrip("\r")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            r, _, _ = select.select([self.fd], [], [], remaining)
+            if not r:
+                return None
+            try:
+                chunk = os.read(self.fd, 256)
+            except BlockingIOError:
+                continue
+            except OSError as e:
+                raise K3ctlError(f"read failed: {e.strerror}") from e
+            if not chunk:
+                raise K3ctlError("device disconnected")
+            self.buf += chunk
+
+
+def send(fd: int, line: str) -> None:
+    data = (line.strip() + "\n").encode()
+    try:
+        while data:
+            _, w, _ = select.select([], [fd], [], 2.0)
+            if not w:
+                raise K3ctlError("write timed out")
+            n = os.write(fd, data)
+            data = data[n:]
+    except OSError as e:
+        raise K3ctlError(f"write failed: {e.strerror}") from e
+
+
+def await_reply(reader: LineReader, timeout_s: float) -> str:
+    """Return the first OK/ERR line; skip anything else (ROM boot banner etc.)."""
+    deadline = time.monotonic() + timeout_s
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise K3ctlError(f"no reply within {timeout_s:.0f}s")
+        line = reader.readline(remaining)
+        if line is None:
+            raise K3ctlError(f"no reply within {timeout_s:.0f}s")
+        if line.startswith(("OK", "ERR")):
+            return line
+
+
+def handshake(fd: int, reader: LineReader) -> None:
+    """Ping until the dongle answers; tolerates a reboot caused by the open."""
+    deadline = time.monotonic() + PING_WINDOW_S
+    while True:
+        send(fd, "ping")
+        try:
+            reply = await_reply(reader, PING_INTERVAL_S)
+        except K3ctlError:
+            reply = None
+        if reply and reply.startswith("OK pong"):
+            return
+        if time.monotonic() > deadline:
+            raise K3ctlError("dongle did not answer ping (wrong device, or firmware not flashed?)")
+
+
+def build_command(args: argparse.Namespace) -> tuple[str, float]:
+    """Translate CLI args into one protocol line plus a reply timeout."""
+    cmd, rest, timeout = args.command, args.args, args.timeout
+    # (min args, max args) per command; the optional trailing arg of power/press
+    # is a duration in ms.
+    arity = {"ping": (0, 0), "status": (0, 0), "help": (0, 0), "reset": (0, 0),
+             "recovery": (0, 0), "power": (0, 1), "press": (1, 2), "hold": (1, 1),
+             "release": (1, 1), "raw": (1, 1)}
+    lo, hi = arity[cmd]
+    if not lo <= len(rest) <= hi:
+        usage_error(f"{cmd}: expected {lo}" + (f"..{hi}" if hi != lo else "") + " argument(s)")
+    if cmd == "raw":
+        return rest[0], timeout
+    has_ms = (cmd == "power" and len(rest) == 1) or (cmd == "press" and len(rest) == 2)
+    if has_ms:
+        ms = rest[-1]
+        if not ms.isdigit() or not 0 < int(ms) <= 15000:
+            usage_error("duration must be 1..15000 ms")
+        timeout = max(timeout, int(ms) / 1000 + 3)   # long tap -> long wait
+    return " ".join([cmd, *rest]), timeout
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="k3ctl", description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("-d", "--dev", default=DEFAULT_DEV, help=f"serial device (default {DEFAULT_DEV})")
+    ap.add_argument("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT_S,
+                    help="seconds to wait for the reply (default %(default)s)")
+    ap.add_argument("-q", "--quiet", action="store_true", help="print nothing on OK")
+    ap.add_argument("command", choices=["ping", "status", "help", "reset", "recovery",
+                                        "power", "press", "hold", "release", "raw"])
+    ap.add_argument("args", nargs="*")
+    args = ap.parse_args(argv)
+
+    line, timeout = build_command(args)
+    try:
+        fd = open_port(args.dev)
+        try:
+            reader = LineReader(fd)
+            handshake(fd, reader)
+            send(fd, line)
+            reply = await_reply(reader, timeout)
+        finally:
+            os.close(fd)
+    except K3ctlError as e:
+        print(f"k3ctl: {e}", file=sys.stderr)
+        return 2
+
+    if reply.startswith("OK"):
+        if not args.quiet:
+            print(reply)
+        return 0
+    print(f"k3ctl: {reply}", file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
