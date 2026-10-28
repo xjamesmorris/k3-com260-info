@@ -13,12 +13,14 @@ import os
 from pathlib import Path
 import shlex
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 from unittest import mock
 from urllib.parse import urlencode
+import zlib
 
 TOOLS = Path(__file__).resolve().parents[1]
 TOOL_ROOT = TOOLS.parents[1]
@@ -81,6 +83,17 @@ def page_bytes(title="Fixture", extra="", navigation=None):
     ).encode()
 
 
+def png_chunk(kind, data):
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+
+def png_bytes(chunks=(), *, rgba=False):
+    header = struct.pack(">IIBBBBB", 1, 1, 8, 6 if rgba else 2, 0, 0, 0)
+    pixels = b"\0" * (5 if rgba else 4)
+    return (b"\x89PNG\r\n\x1a\n" + png_chunk(b"IHDR", header) + b"".join(chunks)
+            + png_chunk(b"IDAT", zlib.compress(pixels)) + png_chunk(b"IEND", b""))
+
+
 def manifest_page_bytes(page):
     extra = "## Fixture\n\nFixture body.\n"
     if page["target"] == "Console-and-Recovery.md":
@@ -111,6 +124,59 @@ class MemorySnapshot:
 
     def protected(self):
         return None
+
+
+class SourcePngTests(unittest.TestCase):
+    def test_rgb_rgba_and_split_image_data(self):
+        for rgba in (False, True):
+            with self.subTest(rgba=rgba):
+                ck.require_source_png(png_bytes(rgba=rgba))
+        display = (png_chunk(b"sRGB", b"\0"), png_chunk(b"pHYs", struct.pack(">IIB", 1, 1, 0)))
+        ck.require_source_png(png_bytes(display))
+        compressed = zlib.compress(b"\0" * 4)
+        split = (png_bytes()[:33] + png_chunk(b"IDAT", compressed[:3])
+                 + png_chunk(b"IDAT", compressed[3:]) + png_chunk(b"IEND", b""))
+        ck.require_source_png(split)
+
+    def test_metadata_and_unknown_chunks_rejected_without_echoing_content(self):
+        marker = ("ghp_" + "A" * 36).encode()
+        for kind in (b"eXIf", b"tEXt", b"zTXt", b"iTXt", b"iCCP", b"tIME", b"acTL", b"vpAg"):
+            with self.subTest(kind=kind), self.assertRaisesRegex(c.Invalid, "metadata") as raised:
+                ck.require_source_png(png_bytes((png_chunk(kind, marker),)))
+            self.assertNotIn(marker.decode(), str(raised.exception))
+
+    def test_invalid_framing_crc_and_chunk_order(self):
+        data = png_bytes()
+        srgb = png_chunk(b"sRGB", b"\0")
+        cases = (
+            b"not a PNG", data[:8], data[:-1], data[:-12], data + b"trailing",
+            data[:8] + data[33:], data[:33] + data[8:33] + data[33:],
+            data[:32] + bytes([data[32] ^ 1]) + data[33:],
+            data[:33] + png_chunk(b"IEND", b""),
+            data[:-12] + srgb + data[-12:],
+            png_bytes((srgb, srgb)),
+            png_bytes((png_chunk(b"sRGB", b"\4"),)),
+            png_bytes((png_chunk(b"pHYs", b"\0" * 8 + b"\2"),)),
+        )
+        for index, value in enumerate(cases):
+            with self.subTest(case=index), self.assertRaises(c.Invalid):
+                ck.require_source_png(value)
+
+    def test_header_and_decompression_limits(self):
+        data = png_bytes()
+        for fields in ((0, 1, 8, 2, 0, 0, 0), (1, 1, 8, 2, 0, 0, 1),
+                       (1, 1, 16, 2, 0, 0, 0), (1, 1, 8, 3, 0, 0, 0),
+                       (ck.MAX_PNG_DECODED, 1, 8, 2, 0, 0, 0)):
+            with self.subTest(fields=fields), self.assertRaises(c.Invalid):
+                ck.require_source_png(data[:8] + png_chunk(b"IHDR", struct.pack(">IIBBBBB", *fields)) + data[33:])
+        with mock.patch.object(c, "MAX_INPUT", len(data) - 1), self.assertRaises(c.Invalid):
+            ck.require_source_png(data)
+        compressed = zlib.compress(b"\0" * 4)
+        for payload in (b"invalid", compressed[:-1], compressed + b"trailing",
+                        compressed + compressed, zlib.compress(b"\0" * 10000),
+                        zlib.compress(b"\0" * 3), zlib.compress(b"\5\0\0\0")):
+            with self.subTest(payload_size=len(payload)), self.assertRaises(c.Invalid):
+                ck.require_source_png(data[:33] + png_chunk(b"IDAT", payload) + data[-12:])
 
 
 class ReferenceTests(unittest.TestCase):
@@ -2055,6 +2121,38 @@ class HookFixtures(GitFixture):
         path.write_bytes(path.read_bytes() + b"\nPublic fixture documentation correction.\n")
         tip = self.commit("Fixture documentation-only change")
         self.gate(self.updates(tip, "refs/heads/main", self.initial))
+
+    def test_source_png_allowed_without_weakening_text_checks(self):
+        (self.root / "board.png").write_bytes(png_bytes())
+        tip = self.commit("Fixture public board photo")
+        self.gate(self.updates(tip))
+        (self.root / "Notes.md").write_bytes(("ghp_" + "A" * 36).encode())
+        tip = self.commit("Fixture sensitive text alongside image")
+        with self.assertRaisesRegex(c.Invalid, "access-token"):
+            self.gate(self.updates(tip))
+
+    def test_source_png_metadata_in_earlier_commit_still_rejected(self):
+        path = self.root / "board.png"
+        path.write_bytes(png_bytes((png_chunk(b"eXIf", b"fixture metadata"),)))
+        self.commit("Fixture image with metadata")
+        path.write_bytes(png_bytes())
+        tip = self.commit("Fixture later metadata removal")
+        with self.assertRaisesRegex(c.Invalid, "PNG: metadata"):
+            self.gate(self.updates(tip))
+
+    def test_source_png_extension_does_not_admit_arbitrary_data(self):
+        (self.root / "board.png").write_bytes(b"not an image\0")
+        tip = self.commit("Fixture binary disguised as PNG")
+        with self.assertRaisesRegex(c.Invalid, "expected a PNG"):
+            self.gate(self.updates(tip))
+
+    def test_source_png_cannot_be_executable(self):
+        path = self.root / "board.png"
+        path.write_bytes(png_bytes())
+        path.chmod(0o755)
+        tip = self.commit("Fixture executable image")
+        with self.assertRaisesRegex(c.Invalid, "executable PNG"):
+            self.gate(self.updates(tip))
 
     def test_prewiki_docs_only_ancestry_allowed(self):
         self.assertNotIn(c.MANIFEST, self.git.entries(c.BASELINE))

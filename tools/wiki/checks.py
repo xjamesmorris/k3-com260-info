@@ -6,13 +6,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 import re
+import struct
 import unicodedata
 from urllib.parse import unquote, urlsplit
+import zlib
 
 import content as c
 
 FIELDS = ("Applies to", "Evidence", "Source review", "Hardware observation", "Destructive operations")
 NAVIGATION_LABELS = ("Previous:", "Next:", "Start again:")
+MAX_PNG_DECODED = 16 * 1024 * 1024
 ARTIFACT = re.compile(
     r"\.(?:xz|gz|bz2|zip|zst|zstd|tar|img|raw|qcow2|iso|bin|dtb|gguf|onnx|safetensors|"
     r"png|jpe?g|gif|svg|webp|mp4|pdf|deb|rpm|whl|git)(?:$|/)", re.I,
@@ -107,6 +110,61 @@ def require_private_safe(data: bytes, path: str, allowances: list[dict] = (), *,
         f = findings[0]
         raise c.Invalid(f"privacy review required: {f['rule']}, blob {f['blob']}, line {f['line']}; "
                         "no matching data is printed; sanitize or obtain a source-bound human review")
+
+
+def require_source_png(data: bytes) -> None:
+    """Validate the metadata-free RGB/RGBA subset allowed in source pushes."""
+    c.require(len(data) <= c.MAX_INPUT and data.startswith(b"\x89PNG\r\n\x1a\n"),
+              "PNG: expected a PNG image no larger than 2 MiB")
+    offset = 8
+    seen = set()
+    compressed = bytearray()
+    row_size = decoded_size = 0
+    while offset < len(data):
+        c.require(offset + 12 <= len(data), "PNG: truncated chunk")
+        length, kind = struct.unpack_from(">I4s", data, offset)
+        end = offset + 12 + length
+        c.require(end <= len(data), "PNG: truncated chunk data")
+        payload = data[offset + 8:end - 4]
+        crc = struct.unpack_from(">I", data, end - 4)[0]
+        c.require(zlib.crc32(data[offset + 4:end - 4]) == crc, "PNG: chunk CRC mismatch")
+        c.require(offset != 8 or kind == b"IHDR", "PNG: IHDR must be first")
+        if kind == b"IHDR":
+            c.require(not seen and length == 13, "PNG: invalid or repeated IHDR")
+            width, height, depth, color, compression, filtering, interlace = struct.unpack(">IIBBBBB", payload)
+            c.require(width > 0 and height > 0 and depth == 8 and color in (2, 6)
+                      and (compression, filtering, interlace) == (0, 0, 0),
+                      "PNG: only noninterlaced 8-bit RGB/RGBA images are supported")
+            row_size = 1 + width * (3 if color == 2 else 4)
+            decoded_size = height * row_size
+            c.require(decoded_size <= MAX_PNG_DECODED, "PNG: decoded image exceeds 16 MiB")
+        elif kind == b"IDAT":
+            compressed.extend(payload)
+        elif kind == b"IEND":
+            c.require(length == 0 and b"IDAT" in seen and end == len(data),
+                      "PNG: invalid IEND, missing image data or trailing bytes")
+        elif kind in (b"sRGB", b"pHYs"):
+            c.require(kind not in seen and b"IDAT" not in seen,
+                      "PNG: repeated or misplaced display chunk")
+            if kind == b"sRGB":
+                c.require(length == 1 and payload[0] <= 3, "PNG: invalid sRGB chunk")
+            else:
+                c.require(length == 9 and payload[8] <= 1, "PNG: invalid pHYs chunk")
+        else:
+            raise c.Invalid("PNG: metadata or unsupported chunk; export without EXIF, text or profiles")
+        seen.add(kind)
+        offset = end
+    c.require(b"IEND" in seen, "PNG: missing IEND")
+    decoder = zlib.decompressobj()
+    try:
+        pixels = decoder.decompress(compressed, decoded_size + 1)
+    except zlib.error:
+        raise c.Invalid("PNG: invalid compressed image data") from None
+    c.require(len(pixels) == decoded_size and decoder.eof
+              and not decoder.unused_data and not decoder.unconsumed_tail,
+              "PNG: image data does not match the header or has trailing compressed data")
+    c.require(all(pixels[i] <= 4 for i in range(0, decoded_size, row_size)),
+              "PNG: invalid scanline filter")
 
 
 def headings(data: bytes) -> set[str]:

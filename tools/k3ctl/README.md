@@ -39,10 +39,25 @@ cd tools/k3ctl
 
 ## Hardware
 
-The firmware's intended dongle is the **ABRobot "ESP32-C3 0.42 OLED"**.
+The firmware's intended dongle is the
+[**ABRobot "ESP32-C3 0.42 OLED"**](https://github.com/zhuhai-esp/ESP32-C3-ABrobot-OLED).
 Its source configures a 72x40 SSD1306 on GPIO5/6 and native USB CDC.
 `-DK3CTL_OLED=0` provides a no-display build option; other ESP32-C3 boards
 and that build variant have not been validated here.
+
+Thanks to **Kevin of Kevin's Blog** for the board-specific information
+used here. His
+[ESP32-C3 0.42 OLED article](https://emalliab.wordpress.com/2025/02/12/esp32-c3-0-42-oled/)
+(February 12, 2025) documents the pinout investigation, OLED wiring, USB CDC
+setup and onboard LED behavior, and links to the
+[board schematic](https://github.com/zhuhai-esp/ESP32-C3-ABrobot-OLED/blob/main/Document/ESP32C3%20OLED%E5%8E%9F%E7%90%86%E5%9B%BE.pdf).
+These sources concern the ESP32-C3 dongle, not the K3 header wiring or the
+reset result above.
+
+![ABRobot ESP32-C3 OLED dongle with a K3-CoM260 on the Firefly carrier](k3ctl_c3.png)
+
+The maintainer's setup. The photo is for identification, not a wiring diagram
+or evidence that the untested functions work.
 
 **Match the actual carrier's numbering, orientation, ground and signals
 before wiring.** The

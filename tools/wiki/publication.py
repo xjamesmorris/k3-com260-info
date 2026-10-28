@@ -1230,11 +1230,16 @@ def content_pre_push(root: Path, data: bytes, remote_name: str, remote_url: str,
                 c.require(kind == "blob" and mode in ("100644", "100755"), "new symlink, submodule, or unsupported object")
                 if path.startswith("wiki/"):
                     c.require(mode == "100644", "new executable wiki page in pushed history")
+                if path.lower().endswith(".png"):
+                    c.require(mode == "100644", "new executable PNG in pushed history")
             if oid not in object_ids or (path, oid) in scanned:
                 continue
             scanned.add((path, oid))
-            checks.require_private_safe(git.blob(oid), path, allowances,
-                                        approved_blob=c.RECIPE_BLOB if path == c.RECIPE_PATH else None)
+            if path.lower().endswith(".png"):
+                checks.require_source_png(git.blob(oid))
+            else:
+                checks.require_private_safe(git.blob(oid), path, allowances,
+                                            approved_blob=c.RECIPE_BLOB if path == c.RECIPE_PATH else None)
     if test_runner:
         test_runner()
     else:

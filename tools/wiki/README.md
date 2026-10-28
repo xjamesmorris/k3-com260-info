@@ -421,6 +421,25 @@ for reading every new commit, message, fixture and public output. They cannot
 prove human approval, licensing, tested hardware compatibility, or correctness
 of a prose claim. Do not place a private identifier list in the public tool.
 
+Source-repository `.png` files have a narrow binary validation path; this
+does not add images to the wiki projection. Only non-executable,
+noninterlaced 8-bit RGB/RGBA images are accepted, with at most 2 MiB encoded
+and 16 MiB of decompressed scanlines. The gate checks the PNG signature,
+chunk bounds/order/CRCs, header, bounded zlib stream, scanline lengths and
+filter bytes. Apart from `IHDR`, `IDAT` and `IEND`, only the fixed-format
+`sRGB` and `pHYs` display chunks are allowed. This is intentionally a small
+subset of the [PNG specification](https://www.w3.org/TR/png/), not a
+general-purpose image decoder.
+
+Remove EXIF, text, ICC profiles and other unsupported chunks before
+committing an image; the gate rejects them rather than attempting to
+approve embedded metadata. A later sanitized copy does not excuse a
+metadata-bearing image earlier in unpublished history. Other binary
+formats remain unsupported, and text files, paths and commit messages keep
+their privacy checks; session-ID trailers are not exempt from UUID checks.
+Human review must still check the visible image and permission to publish
+it. These checks do not perform OCR or detect information hidden in pixels.
+
 A stable known-safe occurrence can have a manifest validation exception with
 exactly:
 
