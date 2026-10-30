@@ -40,13 +40,23 @@ RX/TX positions; do not reuse an older diagram.
 | --- | --- | --- |
 | 3 | `UART0_RXD` (board RX) | Adapter **TX** to board RX |
 | 4 | `UART0_TXD` (board TX) | Adapter **RX** to board TX |
+| 5, 6 | `BMCU_ACOK`, `AUTO_ON_DIS` | **Leave unbridged on the recorded Firefly setup**; see the power-button observation below |
 | 7, 9, 11 | GND | Adapter ground and the ground return for recovery/reset |
 | 8 | Firefly `RST`; vendor `PMIC_RST_OUTn` | Momentary connection to confirmed GND for reset |
 | 10 | Firefly `FC_REC`; vendor `FORCE_RECOVERY` | Hold to confirmed GND for recovery entry |
+| 12 | `SLEEP/WAKE` | Power-button signal; see the recorded restriction below |
 
-Use suitable jumper leads or normally-open momentary switches for the two
+Use suitable jumper leads or normally-open momentary switches for the
 control signals. The serial adapter connects only RX, TX and ground:
 **leave its power/VCC lead disconnected**.
+
+**Do not short K3 header pins 5 and 6 together on this Firefly setup.**
+On 2026-10-30 the maintainer reported the power-button pin connected and
+working, but the board did not power back on via pin 12 with pins 5/6
+bridged. Leave them unbridged for power-button use. The V2.1 guide's
+button-power-on jumper guidance does not match this observation; the reason
+remains unresolved. See the
+[bounded hardware result](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md#recorded-hardware-results).
 
 ## Normal setup: keep working firmware
 
@@ -69,11 +79,13 @@ The standalone
 [`k3ctl` bundle](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md)
 provides ESP32-C3 firmware, a Linux Python client, a udev rule and
 hardware-free client tests for the matching Firefly-carrier header.
-**Only `reset` has been tested on hardware so far**, as reported by the
-maintainer; its test date and software/build versions were not recorded.
-Recovery entry, power control, manual line commands, sensing and display
-behavior remain unverified. Match the header and read the bundle's electrical
-and device-selection cautions before connecting anything.
+**Reset and the power-button pin are maintainer-reported as working.**
+The power-button result was reported on 2026-10-30, subject to the pins 5/6
+restriction above; its command/timing and software/build versions were not
+recorded. The reset test date and software/build versions are also unrecorded.
+Recovery entry, manual line commands, sensing and display behavior remain
+unverified. Match the header and read the bundle's electrical and
+device-selection cautions before connecting anything.
 
 It is optional, not a Fedora prerequisite, and does not carry the K3 serial
 console. Keep the separate serial adapter and physical reset/power access.
@@ -136,13 +148,13 @@ the normal serial checkpoint before returning to the Fedora recipe.
 
 ## Technical notes
 
-**Applies to:** Recorded Firefly-carrier K3-CoM260 kit and Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; carrier PCB revision unknown.
+**Applies to:** Recorded Firefly-carrier K3-CoM260 kit; carrier PCB revision unknown. The serial/boot route uses Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; k3ctl-test software/build versions were not recorded.
 
-**Evidence:** Public October 20 and October 19 F45 host scope, preserved Fedora serial/Firefly recovery records, and the maintainer-reported reset-only k3ctl status. The conditional V2.1 UART/ground reference retains its September 27 review; no new pinout or electrical check was performed.
+**Evidence:** Public October 20 and October 19 F45 host scope, preserved Fedora serial/Firefly recovery records, and maintainer-reported k3ctl reset and power-button results. The conditional V2.1 UART/ground reference retains its September 27 review; pins 5, 6 and 12 were source-checked on 2026-10-30, not electrically revalidated.
 
-**Source review:** 2026-10-26.
+**Source review:** 2026-10-30.
 
-**Hardware observation:** 2026-10-20 and 2026-10-19 F45 temporary boots in the public host record (on 2026-10-20, after a fresh installation into existing p4/p5 partitions: one 7.2.7 bootstrap, the exact 7.2.8 update and three attended 7.2.8 boots) and 2026-09-25 archived serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date. Only k3ctl reset is maintainer-reported as tested; its date and software/build versions were not recorded. No hardware was operated for this integration, and no USB recovery result was added.
+**Hardware observation:** 2026-10-20 and 2026-10-19 F45 temporary boots in the public host record (on 2026-10-20, after a fresh installation into existing p4/p5 partitions: one 7.2.7 bootstrap, the exact 7.2.8 update and three attended 7.2.8 boots) and 2026-09-25 archived serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date. On 2026-10-30 the maintainer reported the power-button pin connected and working, but no power-on via that pin with header pins 5/6 bridged. Reset was previously reported working without a test date; software/build versions for both results and the power-test command/timing were not recorded. No hardware was operated while preparing this documentation, and no USB recovery result was added.
 
 **Destructive operations:** Serial setup does not erase storage. USB reset abruptly restarts the K3 and can lose unsaved data. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
 

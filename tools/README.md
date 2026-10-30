@@ -7,7 +7,7 @@ carrier board.
 | Tool | Purpose | Hardware status |
 | --- | --- | --- |
 | [`k3-flash-bianbu.sh`](k3-flash-bianbu.sh) | Factory flash an official Bianbu K3 release using stock `fastboot` | See the [image results](#status); a manifest pin is not a flash result |
-| [`k3ctl`](k3ctl/README.md) | Control header buttons over USB using an ESP32-C3 dongle | **Only `reset` tested so far**; all other functionality unverified |
+| [`k3ctl`](k3ctl/README.md) | Control header buttons over USB using an ESP32-C3 dongle | **Reset and power-button pin reported working**; see limits below |
 
 ## k3ctl: USB button control
 
@@ -17,11 +17,16 @@ pseudo-terminal. Its guide covers the conditional Firefly header wiring,
 firmware build requirements, host setup, command protocol, and GPL-2.0-only
 licensing.
 
-**Only `reset` has a maintainer-reported hardware test.** The test date and
-software versions were not recorded. Recovery entry, power control, manual
-line commands, status/power sensing, and display behavior remain unverified;
-host tests are not hardware evidence. Reset abruptly restarts the K3 and can
-lose unsaved data.
+**Reset and power-button control have maintainer-reported hardware results.**
+On 2026-10-30 the maintainer reported the power-button pin connected and
+working. **Do not short K3 header pins 5 and 6 together:** the board did not
+power back on via the power-button pin with those pins bridged. See the
+[recorded results and unresolved manual discrepancy](k3ctl/README.md#recorded-hardware-results).
+The power-test command/timing and software/build versions were not recorded;
+the reset test date and software versions are also unrecorded. Recovery
+entry, manual line commands, status/power sensing, and display behavior remain
+unverified; host tests are not hardware evidence. Reset abruptly restarts the
+K3 and can lose unsaved data.
 
 This is a standalone tool, not a Fedora installation prerequisite.
 `k3-flash-bianbu.sh` does not invoke it and has no `-r` option; keep the

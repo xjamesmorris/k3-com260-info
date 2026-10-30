@@ -6,12 +6,14 @@ An ESP32-C3 dongle implements header-button sequences for a **K3-CoM260 on
 the Firefly carrier**, controlled from a Linux workstation over USB. The
 dongle handles timing; the Python client sends a command and reports its reply.
 
-**Hardware status: only `reset` has been tested so far**, as reported by the
-maintainer. All other commands, recovery entry, power control, power sensing,
-and display behavior remain unverified. The reset test date, carrier PCB
-revision, K3 firmware/OS versions, and ESP32 build versions were not recorded.
-The firmware source reports protocol version `1.0`; this does not identify
-the build used for that test.
+**Hardware status: reset and power-button control are maintainer-reported as
+working.** The power-button result and pins 5/6 restriction were reported on
+2026-10-30; see [recorded hardware results](#recorded-hardware-results).
+Other commands, recovery entry, power sensing, and display behavior remain
+unverified. The carrier PCB revision, K3 firmware/OS versions, and ESP32 build
+versions were not recorded for these results; the reset test date is also
+unrecorded. The firmware source reports protocol version `1.0`; this does not
+identify the builds used for either result.
 
 **Reset abruptly restarts the K3 and can lose unsaved data.** An `OK` reply
 acknowledges a firmware command, not a verified K3 boot or power-state change.
@@ -64,14 +66,15 @@ before wiring.** The
 [conditional header reference](../../wiki/Console-and-Recovery.md#conditional-12-pin-header-reference)
 explains the Firefly scope and the vendor reference-kit guide. This is not
 a universal K3-CoM260 pinout; do not apply it to another carrier by inference.
-The additional power/power-sense connections below are untested design
-guidance, not extensions of the recorded reset result.
+For power-button control, **leave K3 header pins 5 and 6 unbridged**; see the
+[recorded restriction](#recorded-hardware-results). Power sensing remains
+untested design guidance.
 
 | ESP32-C3 | Connection | Matching Firefly 12-pin header | Function / status |
 |---|---|---|---|
-| GPIO3 | Pull low / release | pin 8, `PMIC_RST_OUTn` / `RST` | Reset; only hardware-tested function |
+| GPIO3 | Pull low / release | pin 8, `PMIC_RST_OUTn` / `RST` | Reset; maintainer-reported working |
 | GPIO4 | Pull low / release | pin 10, `FORCE_RECOVERY` / `FC_REC` | Recovery; untested |
-| GPIO7 | Pull low / release | pin 12, `SLEEP/WAKE` | Power button; untested |
+| GPIO7 | Pull low / release | pin 12, `SLEEP/WAKE` | Power button; maintainer-reported working with header pins 5/6 unbridged |
 | GND | Common ground | confirmed GND, pin 9 (7 or 11 in the matching reference) | Control-signal return |
 | GPIO10 | Via optional sensing circuit only | pins 2 / 1, `PC_LED+` / `PC_LED-` | Power sensing; untested, disabled by default |
 
@@ -91,6 +94,24 @@ GPIO2/8/9 are not header-control outputs; GPIO8 is used only for the dongle's
 local LED. GPIO5/6 are reserved for the OLED, 18/19 for USB, and 20/21 for
 UART0. Keep the K3 serial console on a separate **3.3 V USB-TTL adapter**,
 connected to the matched RX, TX and ground only, with its VCC lead disconnected.
+
+### Recorded hardware results
+
+The maintainer previously reported `reset` working; its test date was not
+recorded. On **2026-10-30**, the maintainer reported that the power-button pin
+was connected and verified working. **With K3 header pins 5 and 6 shorted
+together, the board did not power back on via the power-button pin.** Leave
+those two pins unbridged for this Firefly-carrier setup.
+
+The [SpacemiT reference-kit guide V2.1, section 5.3](https://cdn-resource.spacemit.com/file/product/K3/k3_com260_ug_en.pdf)
+describes bridging pin 5 (`BMCU_ACOK`) and pin 6 (`AUTO_ON_DIS`) to enable
+button power-on. That guidance does not match the reported behavior; the
+reason remains unresolved. This observation is not a proven correction for
+every carrier or firmware version.
+
+The exact command and pulse duration used for the power test were not
+recorded. This establishes the reported pin function, not validation of every
+`power`, `press` or `hold` variant or timing.
 
 ### Optional power sense - untested
 
@@ -116,7 +137,7 @@ isolated**, even if an optocoupler is used for the optional sense input.
 ## Firmware
 
 The build instructions are setup guidance, **not a recorded reproducer of
-the reset test**. Install Arduino CLI, a reviewed **3.x** release of the
+either hardware result**. Install Arduino CLI, a reviewed **3.x** release of the
 `esp32:esp32` core using the
 [official Espressif package index](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html),
 and U8g2 for the default OLED build. Exact core/library versions are not
@@ -190,11 +211,12 @@ communication or usage errors. `-q` suppresses successful output; `-t`
 sets the reply timeout. Explicit `power`/`press` durations extend the
 timeout to accommodate the requested pulse.
 
-## Protocol and untested commands
+## Protocol and command coverage
 
 One nonblank ASCII command line produces an `OK` or `ERR` reply; blank
 lines are ignored. The sequences below describe the **source implementation**,
-not successful hardware operation except for the maintainer-reported reset.
+not evidence that every command or timing has been tested. The recorded
+hardware results cover reset and the power-button pin only.
 `status` line flags describe firmware-held outputs, not electrical measurements.
 
 | command | effect | reply |
