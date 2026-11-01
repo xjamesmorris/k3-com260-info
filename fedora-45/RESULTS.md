@@ -51,6 +51,11 @@ artifact hashes; it does **not** establish an exact source Git head.
 
 ## November 1: experimental A100 harts with vector disabled
 
+The dedicated [A100 and X100 experiment page](https://github.com/xjamesmorris/k3-com260-info/wiki/A100-and-X100-Experiments)
+adds the detailed DT delta, public generator, timing tables, failure
+chronology and draft maintainer-report material. This section remains the
+bounded result summary.
+
 **Status: experimental and buggy; do not use as a daily or unattended
 configuration.** This was a temporary test on one 8 GiB K3-CoM260 IFX with a
 Firefly carrier. It is not a supported A100 configuration, a fix, or an AI

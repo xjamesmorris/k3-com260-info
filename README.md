@@ -48,6 +48,10 @@ The focused standalone documents and tools remain available:
   These are optional historical development references, not F45 requirements.
 - [Tools](tools/README.md): Bianbu factory flashing using stock `fastboot`
   and USB header-button control, with usage, safety limits, and recorded results.
+- [A100/X100 experiment](wiki/A100-and-X100-Experiments.md): detailed mixed-hart
+  test results, DT changes, failure chronology and draft maintainer report,
+  with the [inspectable DT generator](experiments/a100-x100/README.md).
+  **Experimental and buggy**, not a supported daily configuration or AI result.
 - [k3ctl](tools/k3ctl/README.md): ESP32-C3 firmware, a Python client, udev
   rules, and hardware-free tests for USB button control on the Firefly carrier.
   **Reset and the power-button pin are maintainer-reported as working**;

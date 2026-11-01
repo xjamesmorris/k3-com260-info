@@ -49,6 +49,11 @@ and extract large images; it is not a side-effect-free command preview.
 
 ## Handoff
 
+For maintainer-facing findings, provide detailed, actionable information:
+exact test conditions, DT or code changes, inspectable artifacts, results,
+failure chronology, and unresolved questions. Preserve evidence and privacy
+limits; a high-level status summary alone is not enough.
+
 Give the human author the changed paths, a reviewable diff, the checks
 actually performed, and any unresolved questions or untested behavior.
 Never invent observations, test results, citations, or human endorsements.

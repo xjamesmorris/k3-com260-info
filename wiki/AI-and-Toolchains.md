@@ -47,33 +47,17 @@ the recorded host-kernel pin.
 
 ## Experimental A100/X100 boot: buggy and not a supported configuration
 
-On November 1, 2026, a temporary Device Tree based on SpacemiT's public
-[`k3/hmp-on-7.3` change](https://github.com/spacemit-com/linux/commit/558f896383b50843c09a8d229a0cb40fa9d4dc41)
-brought all 16 X100/A100 harts online on one Firefly-carrier K3-CoM260 IFX
-running Fedora 45 prerelease and Omni kernel
-`7.3.1-300.0.riscv64.omni.fc45.riscv64`. The A100 nodes omitted `v` and
-`zv*`; vector was therefore unavailable system-wide, H was absent from the
-common ISA, and KVM was unavailable. The test did not establish A100
-inference support.
+See the dedicated [A100 and X100 experiments](https://github.com/xjamesmorris/k3-com260-info/wiki/A100-and-X100-Experiments)
+page for the November 1, 2026 test on one Firefly-carrier K3-CoM260 IFX with
+Fedora 45 and Omni 7.3.1: the DT changes, public generator, measurements,
+failure chronology, draft report and outstanding maintainer questions.
 
-**This configuration is experimental and buggy; do not use it as a daily,
-default, or unattended setup.** Three system-unresponsive events occurred
-across two boots using the no-Ziccrse variant, including an RCU stall on
-CPU 9 (A100), later hard-lockup reports on CPUs 10 and 9 (A100) and CPU 2
-(X100), and a build-time hang whose CPU was not identified. A separate DT
-that declared Ziccrse completed one build and a 58-minute login/userdb soak
-in a 2-hour-46-minute boot; a later one-shot run remained free of reported
-stalls for 15 minutes. The declaration is an unverified hardware claim, and
-these few runs do not show that it fixed the issue or establish stability.
-The root cause is unknown. The detailed, bounded record is in the
-[Fedora 45 results](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md#november-1-experimental-a100-harts-with-vector-disabled).
-
-For Linux and firmware maintainers, the record identifies the board, kernel,
-firmware and public Device Tree basis, along with the observed symptoms and
-open questions about supported mixed-hart topology, advertised ISA features,
-and possible HSM, timer/IPI, coherency or firmware issues. It does not blame
-Linux, firmware, or hardware. Raw captures are not public; sanitized
-follow-up material would require human review.
+**Experimental and buggy: not for daily, default or unattended use.**
+Omitting A100 vector declarations brought 16 harts online but removed RVV
+and KVM. Three stall/lockup events occurred across two no-Ziccrse build
+boots. One Ziccrse-declaring build/soak and a short follow-up did not
+establish a fix or stability; that hardware declaration is unverified.
+Root cause is unknown. This is not an AI inference result.
 
 ## What the inference references actually show
 
@@ -132,4 +116,4 @@ orientation, not text to paste into an upstream report.
 **Destructive operations:** None on this page. No model download, inference, affinity change, or CPU-enablement procedure is provided.
 
 **Previous:** [KVM and QEMU](https://github.com/xjamesmorris/k3-com260-info/wiki/KVM-and-QEMU).
-**Next:** [Contributing upstream](https://github.com/xjamesmorris/k3-com260-info/wiki/Contributing-Upstream).
+**Next:** [A100 and X100 experiments](https://github.com/xjamesmorris/k3-com260-info/wiki/A100-and-X100-Experiments).

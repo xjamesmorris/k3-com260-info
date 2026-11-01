@@ -20,6 +20,7 @@
     {"source": "wiki/Kernel-and-Device-Tree-Development.md", "target": "Kernel-and-Device-Tree-Development.md", "title": "Kernel and device-tree development", "section": "Develop", "kind": "procedure"},
     {"source": "wiki/KVM-and-QEMU.md", "target": "KVM-and-QEMU.md", "title": "KVM and QEMU", "section": "Develop", "kind": "procedure"},
     {"source": "wiki/AI-and-Toolchains.md", "target": "AI-and-Toolchains.md", "title": "AI and toolchains", "section": "Develop", "kind": "reference"},
+    {"source": "wiki/A100-and-X100-Experiments.md", "target": "A100-and-X100-Experiments.md", "title": "A100 and X100 experiments", "section": "Develop", "kind": "reference"},
     {"source": "wiki/Contributing-Upstream.md", "target": "Contributing-Upstream.md", "title": "Contributing upstream", "section": "Develop", "kind": "reference"},
     {"source": "wiki/Ecosystem-and-Resources.md", "target": "Ecosystem-and-Resources.md", "title": "Ecosystem and resources", "section": "Resources", "kind": "resources"},
     {"source": "wiki/Fedora-44-Archive.md", "target": "Fedora-44-Archive.md", "title": "Fedora 44 archive", "section": "Resources", "kind": "reference"},

@@ -87,6 +87,7 @@ isolation claim.
 - **Evaluate and operate the board:** use [Diagnostics and known limits](https://github.com/xjamesmorris/k3-com260-info/wiki/Diagnostics-and-Known-Limits) to identify the complete stack, and [Maintain and update](https://github.com/xjamesmorris/k3-com260-info/wiki/Maintain-and-Update) before changing it.
 - **Develop and contribute:** start with [Kernel and device-tree development](https://github.com/xjamesmorris/k3-com260-info/wiki/Kernel-and-Device-Tree-Development) or [KVM and QEMU](https://github.com/xjamesmorris/k3-com260-info/wiki/KVM-and-QEMU), then [Contributing upstream](https://github.com/xjamesmorris/k3-com260-info/wiki/Contributing-Upstream). [AI and toolchains](https://github.com/xjamesmorris/k3-com260-info/wiki/AI-and-Toolchains) is a separate development brief, not a Fedora acceleration recipe.
 - **Reproduce the historical F44 work:** start at the [archive landing page](https://github.com/xjamesmorris/k3-com260-info/wiki/Fedora-44-Archive), not the F45 recipe.
+- **Investigate mixed CPU harts:** [A100 and X100 experiments](https://github.com/xjamesmorris/k3-com260-info/wiki/A100-and-X100-Experiments) collects the experimental, buggy 16-hart test, DT generator, failure details and draft maintainer-report material. It is not a supported enablement recipe.
 
 ## Sources and prior art
 

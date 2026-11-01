@@ -156,5 +156,5 @@ creation, email, and publication remain human-controlled actions.
 
 **Destructive operations:** None on this page. Reproduction that boots another kernel or writes storage is separate, attended work; the examples on this page do not authorize it.
 
-**Previous:** [AI and toolchains](https://github.com/xjamesmorris/k3-com260-info/wiki/AI-and-Toolchains).
+**Previous:** [A100 and X100 experiments](https://github.com/xjamesmorris/k3-com260-info/wiki/A100-and-X100-Experiments).
 **Next:** [Ecosystem and resources](https://github.com/xjamesmorris/k3-com260-info/wiki/Ecosystem-and-Resources).
