@@ -45,6 +45,36 @@ hardware observation, a complete diagnosis of vendor scheduling, or an
 instruction to online additional cores. This code reference does not replace
 the recorded host-kernel pin.
 
+## Experimental A100/X100 boot: buggy and not a supported configuration
+
+On November 1, 2026, a temporary Device Tree based on SpacemiT's public
+[`k3/hmp-on-7.3` change](https://github.com/spacemit-com/linux/commit/558f896383b50843c09a8d229a0cb40fa9d4dc41)
+brought all 16 X100/A100 harts online on one Firefly-carrier K3-CoM260 IFX
+running Fedora 45 prerelease and Omni kernel
+`7.3.1-300.0.riscv64.omni.fc45.riscv64`. The A100 nodes omitted `v` and
+`zv*`; vector was therefore unavailable system-wide, H was absent from the
+common ISA, and KVM was unavailable. The test did not establish A100
+inference support.
+
+**This configuration is experimental and buggy; do not use it as a daily,
+default, or unattended setup.** Three system-unresponsive events occurred
+across two boots using the no-Ziccrse variant, including an RCU stall on
+CPU 9 (A100), later hard-lockup reports on CPUs 10 and 9 (A100) and CPU 2
+(X100), and a build-time hang whose CPU was not identified. A separate DT
+that declared Ziccrse completed one build and a 58-minute login/userdb soak
+in a 2-hour-46-minute boot; a later one-shot run remained free of reported
+stalls for 15 minutes. The declaration is an unverified hardware claim, and
+these few runs do not show that it fixed the issue or establish stability.
+The root cause is unknown. The detailed, bounded record is in the
+[Fedora 45 results](https://github.com/xjamesmorris/k3-com260-info/blob/main/fedora-45/RESULTS.md#november-1-experimental-a100-harts-with-vector-disabled).
+
+For Linux and firmware maintainers, the record identifies the board, kernel,
+firmware and public Device Tree basis, along with the observed symptoms and
+open questions about supported mixed-hart topology, advertised ISA features,
+and possible HSM, timer/IPI, coherency or firmware issues. It does not blame
+Linux, firmware, or hardware. Raw captures are not public; sanitized
+follow-up material would require human review.
+
 ## What the inference references actually show
 
 The upstream llama.cpp
@@ -93,11 +123,11 @@ orientation, not text to paste into an upstream report.
 
 **Applies to:** SpacemiT K3 X100 and SpacemiT A100 core capabilities; Fedora development on the recorded K3-CoM260/Firefly host. Other software stacks are references only.
 
-**Evidence:** Archived F44 Fedora/KVM record, vendor architecture/inference documentation and upstream review dated September 27. F45 route context was locally reconciled with public host results on October 20, not a new AI/source review; opportunities are not completed experiments.
+**Evidence:** Public November 1 F45 A100/X100 test record; archived F44 Fedora/KVM record; vendor architecture/inference documentation and upstream review dated September 27. The A100 test is not an inference result.
 
-**Source review:** 2026-09-27.
+**Source review:** 2026-11-01 for the public hardware-result reconciliation; external capability/toolchain sources remain reviewed 2026-09-27.
 
-**Hardware observation:** No AI inference experiment recorded here. The cited F45 host records are 2026-10-19 and 2026-10-20 (the latter a fresh installation into existing p4/p5 partitions with three attended 7.2.8 boots), and the archived F44 guest snapshot is 2026-09-25; none is an AI result.
+**Hardware observation:** 2026-11-01 experimental 16-hart A100/X100 testing on one Firefly-carrier K3-CoM260 IFX, with the recorded stalls, build comparison and limited Ziccrse-declaring run; no AI inference experiment. Earlier cited F45 host records are 2026-10-19 and 2026-10-20, and the archived F44 guest snapshot is 2026-09-25.
 
 **Destructive operations:** None on this page. No model download, inference, affinity change, or CPU-enablement procedure is provided.
 

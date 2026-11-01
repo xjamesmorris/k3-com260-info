@@ -2,9 +2,12 @@
 
 # Fedora 45 Beta: recorded host results
 
-This is an original summary, for human review, of three attended Fedora 45
+This is an original summary, for human review, of four attended Fedora 45
 records on the K3-CoM260:
 
+- **November 1, 2026 (UTC): experimental A100/X100 mixed-hart testing** with
+  the Omni 7.3.1 kernel. This configuration is buggy and not suitable for
+  unattended or routine use.
 - **October 21, 2026 (UTC): the 7.3.0 fan-control upgrade**, installed from
   7.2.8 with the public helpers and booted once.
 - **October 20, 2026 (UTC): fresh installation with the public helpers**
@@ -45,6 +48,68 @@ Public provenance references:
 These are fixed test inputs, not instructions to substitute a newer compose
 or kernel. Package identity is bound to the build, NEVRAs and recorded
 artifact hashes; it does **not** establish an exact source Git head.
+
+## November 1: experimental A100 harts with vector disabled
+
+**Status: experimental and buggy; do not use as a daily or unattended
+configuration.** This was a temporary test on one 8 GiB K3-CoM260 IFX with a
+Firefly carrier. It is not a supported A100 configuration, a fix, or an AI
+inference result.
+
+| Item | Recorded |
+| --- | --- |
+| Software | Fedora 45 Server prerelease; Omni kernel `7.3.1-300.0.riscv64.omni.fc45.riscv64`. |
+| Firmware | Vendor U-Boot 2022.10, BSP build 395; SBI reported OpenSBI 2.0, implementation ID 1, version `0x10006`. |
+| Device-tree basis | SpacemiT's public [`k3/hmp-on-7.3` change](https://github.com/spacemit-com/linux/commit/558f896383b50843c09a8d229a0cb40fa9d4dc41), adding the A100 CPU nodes and 16-hart topology/IMSIC wiring. |
+| Experimental change | The test DT omitted `v` and `zv*` from the A100 nodes. Linux brought all 16 X100/A100 CPUs online, but vector, H, Ziccrse and `zv*` were absent from the common ISA; KVM was unavailable. Without Ziccrse, the kernel selected ticket spinlocks. |
+
+Two build boots with this no-Ziccrse variant had three system-unresponsive
+events:
+
+| Boot | Observation |
+| --- | --- |
+| First | At about 40–110 seconds, CPU 9 (A100) was reported in an RCU stall. |
+| First | At about 870–1,200 seconds, hard-lockup reports named CPUs 10 and 9 (A100), then CPU 2 (X100); network access failed and the serial console became nearly unresponsive. |
+| Second | At about 5,150 seconds during parallel module compression, the network stopped answering and serial input had no effect; the CPU involved was not identified. The build did not complete. |
+
+These are reports of user-visible system unresponsiveness, not proof that
+every CPU stopped. The captured stall status included S-mode with interrupts
+enabled and a supervisor-timer exception. Time-CSR checks and the absence of
+a cpuidle driver did not identify a cause. Firmware, hardware, coherency,
+kernel, and other ISA/implementation issues remain unresolved.
+
+A separate test DT declared Ziccrse on the A100 nodes, selecting queued
+spinlocks. That declaration is an unverified hardware claim: it was not in
+the vendor-derived A100 ISA list, and a Device Tree declaration does not
+establish that the hardware implements the guarantee. This variant completed
+one native kernel build in 5,904 seconds and a 58-minute login/userdb soak
+within a 2-hour-46-minute boot without a reported stall. A later attended
+one-shot boot of the same variant had no reported stall during 15 minutes.
+These are limited observations, not stability qualification and not evidence
+that Ziccrse or queued spinlocks fixed the hangs.
+
+The completed 16-hart build was about 15% faster than the one eight-X100
+build (5,904 versus 6,974 seconds); there was one build per configuration.
+In an `xz` sample, one A100 core took about 2.1 times as long as one X100
+core, while all 16 harts completed a 256 MiB parallel sample about 1.26
+times faster than the eight X100s. These are single-board workload
+observations, not general performance claims. No AI workload was tested.
+
+The test Device Tree was selected manually and was not saved in the U-Boot
+environment. The saved X100-only configuration remains distinct from this
+experimental setup. The temporary A100 configuration should not be used
+unattended.
+
+For Linux and firmware maintainers, the useful bounded report is: one
+Firefly-carrier K3-CoM260 IFX, Fedora 45 prerelease, Omni 7.3.1, vendor
+U-Boot 2022.10 (BSP 395), with the public `k3/hmp-on-7.3` topology change.
+The three hangs occurred with the no-Ziccrse test DT; the separate
+Ziccrse-declaring test completed one build and soak, but does not establish
+causality. Questions include whether this mixed-hart configuration is
+supported, which A100 ISA extensions are safe to advertise, and whether
+there are known HSM, timer/IPI, coherency, or firmware issues. Root cause is
+unknown; no component is blamed. Raw captures remain private; any sanitized
+follow-up material requires human review.
 
 ## October 21: 7.3.0 fan-control upgrade
 
