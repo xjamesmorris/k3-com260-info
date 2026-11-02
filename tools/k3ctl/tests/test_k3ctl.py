@@ -50,6 +50,8 @@ class FakeDongle(threading.Thread):
             return "OK recovery"
         if cmd == "status":
             return "OK status rst=0 fcrec=0 pwr=0 k3=n/a up=1 ver=test"
+        if cmd == "power":
+            return "OK " + " ".join(parts)
         if cmd == "press" and len(parts) == 3:
             return f"OK press {parts[1]} {parts[2]}"
         return "ERR unknown command (try help)"
@@ -123,6 +125,21 @@ class ClientTests(unittest.TestCase):
         r = run_client(self.dongle.path, "press", "rst", "99999")
         self.assertEqual(r.returncode, 2)          # argparse/SystemExit path
         self.assertEqual(self.dongle.received, [])  # never touched the device
+
+    def test_power_modes_forwarded(self) -> None:
+        for args in (["power", "on"], ["power", "force-off"], ["power", "cycle", "4000"]):
+            r = run_client(self.dongle.path, *args)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(r.stdout.strip(), "OK " + " ".join(args))
+        self.assertEqual(self.dongle.received[1::2],
+                         ["power on", "power force-off", "power cycle 4000"])
+
+    def test_bad_power_args_rejected_locally(self) -> None:
+        for args in (["power", "sideways"], ["power", "on", "500"],
+                     ["power", "cycle", "0"], ["power", "300", "300"]):
+            r = run_client(self.dongle.path, *args)
+            self.assertEqual(r.returncode, 2, args)
+        self.assertEqual(self.dongle.received, [])
 
     def test_arity_checked_locally(self) -> None:
         r = run_client(self.dongle.path, "reset", "now")

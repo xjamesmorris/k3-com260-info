@@ -4,12 +4,16 @@
 
 Talks to the ESP32-C3 dongle running firmware/k3ctl (see README.md). The
 dongle does the timing; this client sends one command line and relays the
-one-line reply. Only reset has a maintainer-reported hardware test; other
-functions are unverified. Read README.md before wiring or issuing commands.
+one-line reply. Reset and a running board's power-off have maintainer-reported
+results; power-on via the power pin has failed; other functions are
+unverified. Read README.md before wiring or issuing commands.
 
     k3ctl reset                 tap SYS_RST
     k3ctl recovery              hold FC_REC, tap RST, release -> BootROM/fastboot
     k3ctl power [ms]            tap SLEEP/WAKE
+    k3ctl power on|off          press SLEEP/WAKE, skipped if power sense agrees
+    k3ctl power force-off       long SLEEP/WAKE press
+    k3ctl power cycle [ms]      cut DC via the optional switch (firmware option)
     k3ctl press <line> [ms]     tap rst|fcrec|pwr
     k3ctl hold <line>           assert (30 s release timer; see README limits)
     k3ctl release <line>|all
@@ -35,6 +39,9 @@ DEFAULT_DEV = os.environ.get("K3CTL_DEV", "/dev/k3ctl")
 PING_WINDOW_S = 4.0     # the dongle may reboot when the port opens; wait it out
 PING_INTERVAL_S = 0.5
 DEFAULT_TIMEOUT_S = 5.0
+# Reply waits for the named power modes, covering the firmware defaults
+# (K3CTL_PWR_ON_MS + sense wait, K3CTL_PWR_FORCE_MS, 3 s DC cut) plus margin.
+POWER_WAIT_S = {"on": 12.0, "off": 5.0, "force-off": 15.0, "cycle": 6.0}
 
 
 class K3ctlError(Exception):
@@ -163,16 +170,24 @@ def build_command(args: argparse.Namespace) -> tuple[str, float]:
     """Translate CLI args into one protocol line plus a reply timeout."""
     cmd, rest, timeout = args.command, args.args, args.timeout
     # (min args, max args) per command; the optional trailing arg of power/press
-    # is a duration in ms.
+    # (including 'power cycle') is a duration in ms.
     arity = {"ping": (0, 0), "status": (0, 0), "help": (0, 0), "reset": (0, 0),
-             "recovery": (0, 0), "power": (0, 1), "press": (1, 2), "hold": (1, 1),
+             "recovery": (0, 0), "power": (0, 2), "press": (1, 2), "hold": (1, 1),
              "release": (1, 1), "raw": (1, 1)}
     lo, hi = arity[cmd]
     if not lo <= len(rest) <= hi:
         usage_error(f"{cmd}: expected {lo}" + (f"..{hi}" if hi != lo else "") + " argument(s)")
     if cmd == "raw":
         return rest[0], timeout
-    has_ms = (cmd == "power" and len(rest) == 1) or (cmd == "press" and len(rest) == 2)
+    if cmd == "power" and rest:
+        mode = "ms" if rest[0].isdigit() else rest[0]
+        if mode != "ms" and mode not in POWER_WAIT_S:
+            usage_error("power: expected ms, on, off, force-off or cycle [ms]")
+        if len(rest) == 2 and mode != "cycle":
+            usage_error("power: only 'cycle' takes a second argument")
+        timeout = max(timeout, POWER_WAIT_S.get(mode, 0.0))
+    has_ms = ((cmd == "power" and len(rest) == 1 and rest[0].isdigit())
+              or (cmd in ("power", "press") and len(rest) == 2))
     if has_ms:
         ms = rest[-1]
         if not ms.isdigit() or not 0 < int(ms) <= 15000:

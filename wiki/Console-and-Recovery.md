@@ -40,7 +40,7 @@ RX/TX positions; do not reuse an older diagram.
 | --- | --- | --- |
 | 3 | `UART0_RXD` (board RX) | Adapter **TX** to board RX |
 | 4 | `UART0_TXD` (board TX) | Adapter **RX** to board TX |
-| 5, 6 | `BMCU_ACOK`, `AUTO_ON_DIS` | **Leave unbridged on the recorded Firefly setup**; see the power-button observation below |
+| 5, 6 | `BMCU_ACOK`, `AUTO_ON_DIS` | **Leave unbridged on the recorded Firefly setup**; see the power-button observations below |
 | 7, 9, 11 | GND | Adapter ground and the ground return for recovery/reset |
 | 8 | Firefly `RST`; vendor `PMIC_RST_OUTn` | Momentary connection to confirmed GND for reset |
 | 10 | Firefly `FC_REC`; vendor `FORCE_RECOVERY` | Hold to confirmed GND for recovery entry |
@@ -53,7 +53,9 @@ control signals. The serial adapter connects only RX, TX and ground:
 **Do not short K3 header pins 5 and 6 together on this Firefly setup.**
 On 2026-10-30 the maintainer reported the power-button pin connected and
 working, but the board did not power back on via pin 12 with pins 5/6
-bridged. Leave them unbridged for power-button use. The V2.1 guide's
+bridged. On 2026-10-31, with them unbridged, pin 12 pulses of 300 ms to
+12 s did not power a software-off board on either, but replugging DC power
+booted it. Leave them unbridged so that DC power-up boots the board. The V2.1 guide's
 button-power-on jumper guidance does not match this observation; the reason
 remains unresolved. See the
 [bounded hardware result](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md#recorded-hardware-results).
@@ -79,12 +81,15 @@ The standalone
 [`k3ctl` bundle](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md)
 provides ESP32-C3 firmware, a Linux Python client, a udev rule and
 hardware-free client tests for the matching Firefly-carrier header.
-**Reset and the power-button pin are maintainer-reported as working.**
+**Reset and powering off a running board are maintainer-reported as
+working; powering the board on via the power-button pin has not worked.**
 The power-button result was reported on 2026-10-30, subject to the pins 5/6
 restriction above; its command/timing and software/build versions were not
-recorded. The reset test date and software/build versions are also unrecorded.
-Recovery entry, manual line commands, sensing and display behavior remain
-unverified. Match the header and read the bundle's electrical and
+recorded. On 2026-10-31, with pins 5/6 unbridged and firmware 1.0, pulses of
+300 ms to 12 s did not wake the board after a Fedora 45 software poweroff;
+replugging DC power booted it. The reset test date and software/build
+versions are also unrecorded. Recovery entry, manual line commands, sensing
+and the bundle's version 1.1 display and power commands remain unverified. Match the header and read the bundle's electrical and
 device-selection cautions before connecting anything.
 
 It is optional, not a Fedora prerequisite, and does not carry the K3 serial
@@ -154,7 +159,7 @@ the normal serial checkpoint before returning to the Fedora recipe.
 
 **Source review:** 2026-10-30.
 
-**Hardware observation:** 2026-10-20 and 2026-10-19 F45 temporary boots in the public host record (on 2026-10-20, after a fresh installation into existing p4/p5 partitions: one 7.2.7 bootstrap, the exact 7.2.8 update and three attended 7.2.8 boots) and 2026-09-25 archived serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date. On 2026-10-30 the maintainer reported the power-button pin connected and working, but no power-on via that pin with header pins 5/6 bridged. Reset was previously reported working without a test date; software/build versions for both results and the power-test command/timing were not recorded. No hardware was operated while preparing this documentation, and no USB recovery result was added.
+**Hardware observation:** 2026-10-20 and 2026-10-19 F45 temporary boots in the public host record (on 2026-10-20, after a fresh installation into existing p4/p5 partitions: one 7.2.7 bootstrap, the exact 7.2.8 update and three attended 7.2.8 boots) and 2026-09-25 archived serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date. On 2026-10-30 the maintainer reported the power-button pin connected and working, but no power-on via that pin with header pins 5/6 bridged; on 2026-10-31, with them unbridged, k3ctl 1.0 pulses of 300 ms to 12 s also did not power on a board after software poweroff, while replugging DC did. Reset was previously reported working without a test date; software/build versions for both results and the power-test command/timing were not recorded. No hardware was operated while preparing this documentation, and no USB recovery result was added.
 
 **Destructive operations:** Serial setup does not erase storage. USB reset abruptly restarts the K3 and can lose unsaved data. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
 

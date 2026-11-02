@@ -54,9 +54,11 @@ The focused standalone documents and tools remain available:
   **Experimental and buggy**, not a supported daily configuration or AI result.
 - [k3ctl](tools/k3ctl/README.md): ESP32-C3 firmware, a Python client, udev
   rules, and hardware-free tests for USB button control on the Firefly carrier.
-  **Reset and the power-button pin are maintainer-reported as working**;
-  leave K3 header pins **5 and 6 unbridged** for power-button use. Recovery
-  and the other functions remain unverified. It is not integrated into the
+  **Reset and powering off a running board are maintainer-reported as
+  working; powering the board on via the power-button pin has not worked.**
+  Leave K3 header pins **5 and 6 unbridged** so reapplying DC boots the
+  board. Recovery and the other functions, including the version 1.1 display
+  and power commands, remain unverified. It is not integrated into the
   flashing script.
 - [Flashing development context](tools/k3-flash-bianbu-HANDOFF.md): protocol
   findings, design decisions, and ideas for further work.

@@ -6,14 +6,16 @@ An ESP32-C3 dongle implements header-button sequences for a **K3-CoM260 on
 the Firefly carrier**, controlled from a Linux workstation over USB. The
 dongle handles timing; the Python client sends a command and reports its reply.
 
-**Hardware status: reset and power-button control are maintainer-reported as
-working.** The power-button result and pins 5/6 restriction were reported on
-2026-10-30; see [recorded hardware results](#recorded-hardware-results).
-Other commands, recovery entry, power sensing, and display behavior remain
-unverified. The carrier PCB revision, K3 firmware/OS versions, and ESP32 build
-versions were not recorded for these results; the reset test date is also
-unrecorded. The firmware source reports protocol version `1.0`; this does not
-identify the builds used for either result.
+**Hardware status: reset and powering off a running board are
+maintainer-reported as working. Powering the board back on through the
+power-button pin has not worked.** On 2026-10-31, with pins 5/6 unbridged,
+no pulse from 300 ms to 12 s woke a board after a software poweroff; only
+replugging DC did. See [recorded hardware results](#recorded-hardware-results).
+Other commands, recovery entry, power sensing, line monitoring, the optional
+DC switch and LED, and the version 1.1 display remain unverified. The carrier
+PCB revision was not recorded for any result, and the earlier results also
+lack K3 firmware/OS and ESP32 build versions. The firmware source now reports
+protocol version `1.1`; the recorded results used firmware `1.0`.
 
 **Reset abruptly restarts the K3 and can lose unsaved data.** An `OK` reply
 acknowledges a firmware command, not a verified K3 boot or power-state change.
@@ -30,6 +32,8 @@ for factory flashing; USB recovery automation is not an established result.
 | --- | --- |
 | [`k3ctl`](k3ctl) | Standard-library-only Python client; Linux, Python 3.10+ |
 | [`firmware/k3ctl/k3ctl.ino`](firmware/k3ctl/k3ctl.ino) | ESP32-C3 firmware; arduino-esp32 core 3.x, U8g2 when the OLED is enabled |
+| [`firmware/k3ctl/riscv_logo.h`](firmware/k3ctl/riscv_logo.h) | Generated 1-bit RISC-V logo for the OLED; see [Display](#display) |
+| [`make-logo.py`](make-logo.py) | Regenerates `riscv_logo.h` from the official logo pack; needs Pillow |
 | [`99-k3ctl.rules`](99-k3ctl.rules) | Optional Linux udev rule for `/dev/k3ctl` and port permissions |
 | [`tests/test_k3ctl.py`](tests/test_k3ctl.py) | Hardware-free client tests using a pseudo-terminal |
 
@@ -66,17 +70,20 @@ before wiring.** The
 [conditional header reference](../../wiki/Console-and-Recovery.md#conditional-12-pin-header-reference)
 explains the Firefly scope and the vendor reference-kit guide. This is not
 a universal K3-CoM260 pinout; do not apply it to another carrier by inference.
-For power-button control, **leave K3 header pins 5 and 6 unbridged**; see the
-[recorded restriction](#recorded-hardware-results). Power sensing remains
+For power-button control, **leave K3 header pins 5 and 6 unbridged** unless
+deliberately running the attended bridged test; see the
+[recorded results](#recorded-hardware-results). Power sensing remains
 untested design guidance.
 
 | ESP32-C3 | Connection | Matching Firefly 12-pin header | Function / status |
 |---|---|---|---|
 | GPIO3 | Pull low / release | pin 8, `PMIC_RST_OUTn` / `RST` | Reset; maintainer-reported working |
 | GPIO4 | Pull low / release | pin 10, `FORCE_RECOVERY` / `FC_REC` | Recovery; untested |
-| GPIO7 | Pull low / release | pin 12, `SLEEP/WAKE` | Power button; maintainer-reported working with header pins 5/6 unbridged |
+| GPIO7 | Pull low / release | pin 12, `SLEEP/WAKE` | Power button; powers a running board off (maintainer-reported); did not power it on with pins 5/6 unbridged |
 | GND | Common ground | confirmed GND, pin 9 (7 or 11 in the matching reference) | Control-signal return |
 | GPIO10 | Via optional sensing circuit only | pins 2 / 1, `PC_LED+` / `PC_LED-` | Power sensing; untested, disabled by default |
+| GPIO0 | Optional external LED + resistor to GND | none (dongle side only) | Status LED; untested, disabled by default |
+| GPIO1 | Optional DC-switch module logic input | none (switches the K3 DC input) | `power cycle`; untested, disabled by default |
 
 The firmware emulates open-drain control: released pins are inputs (Hi-Z),
 and asserted pins drive low, never deliberately high. This does **not**
@@ -101,7 +108,8 @@ The maintainer previously reported `reset` working; its test date was not
 recorded. On **2026-10-30**, the maintainer reported that the power-button pin
 was connected and verified working. **With K3 header pins 5 and 6 shorted
 together, the board did not power back on via the power-button pin.** Leave
-those two pins unbridged for this Firefly-carrier setup.
+those two pins unbridged for this Firefly-carrier setup; with them unbridged,
+reapplying DC power boots the board (recorded 2026-10-31, below).
 
 The [SpacemiT reference-kit guide V2.1, section 5.3](https://cdn-resource.spacemit.com/file/product/K3/k3_com260_ug_en.pdf)
 describes bridging pin 5 (`BMCU_ACOK`) and pin 6 (`AUTO_ON_DIS`) to enable
@@ -109,9 +117,28 @@ button power-on. That guidance does not match the reported behavior; the
 reason remains unresolved. This observation is not a proven correction for
 every carrier or firmware version.
 
-The exact command and pulse duration used for the power test were not
-recorded. This establishes the reported pin function, not validation of every
-`power`, `press` or `hold` variant or timing.
+The exact command and pulse duration used for the 2026-10-30 power test were
+not recorded. This establishes the reported pin function, not validation of
+every `power`, `press` or `hold` variant or timing.
+
+On **2026-10-31** (21:31-21:41 UTC), with the maintainer present, an attended
+test used k3ctl firmware `1.0` with power sensing not wired (`k3=n/a`) and
+pins 5/6 **unbridged**. The K3 was running Fedora 45 kernel
+`7.3.0-65.1.riscv64.omni.fc45`. After a software `poweroff`, `k3ctl power` at
+300, 1000, 3000, 6000 and 12000 ms, then one `k3ctl reset`, were each
+acknowledged. None produced any K3 serial console output within 25-30 s.
+The board came back only when DC power was unplugged and replugged, then
+booted to Fedora. No physical power button is attached to the carrier. On
+2026-11-01 the maintainer reported that a `power` tap powers off a running
+Fedora 45 board; the duration used is unrecorded.
+
+**Untested next step:** an attended rerun with pins 5/6 **bridged**, which
+also checks whether DC insertion still auto-boots. Unresolved explanations
+include: SLEEP/WAKE being ignored or unpowered in this off state, or power-on
+from that pin needing the bridge plus a press of unknown length. The
+optional [DC switch](#optional-dc-switch---untested) is a fallback design;
+it relies on the recorded auto-boot when DC is reapplied with pins 5/6
+unbridged.
 
 ### Optional power sense - untested
 
@@ -134,6 +161,76 @@ behavior before choosing a sensing circuit. Neither option below was tested:
 The control wires share ground, so the complete dongle is **not galvanically
 isolated**, even if an optocoupler is used for the optional sense input.
 
+With sensing enabled, `power on` and `power off` skip the press when the
+sensed state already matches, `power on` waits up to 5 s for the K3 to read
+as on, and `power force-off` releases early once the K3 reads off.
+
+### Optional status LED - untested
+
+The ABRobot dongle's only firmware-controlled on-board LED listed in the
+sources above is the blue GPIO8 LED, which k3ctl already lights while it
+drives a line. `-DK3CTL_EXTLED_PIN=0` drives an external LED
+(with a series resistor, for example 1 kohm, to GND) from GPIO0. It is lit
+while the K3 is sensed on or an event is showing on the OLED.
+
+### Optional DC switch - untested
+
+`-DK3CTL_DCSW_PIN=1` enables `power cycle [ms]`, which drives GPIO1 to cut
+the K3's DC input for *ms* (default 3000), then restores it. This relies on
+the [recorded](#recorded-hardware-results) auto-boot when DC is reapplied
+with pins 5/6 unbridged; it has not been built into hardware or tested.
+
+- Use a module with a **3.3 V logic input** (relay module with its own
+  driver, or a logic-level MOSFET/load switch rated for the K3 supply). Never
+  drive a relay coil or the K3 supply from the GPIO directly.
+- Wire the switched contact so DC stays **on** when the dongle is unpowered
+  or resetting (for example a relay's normally-closed contact).
+- `K3CTL_DCSW_CUT_LEVEL` (default `1`) is the GPIO level that cuts power;
+  set it to match the module. Startup glitches on GPIO1 are unverified.
+- Cutting DC is an abrupt power loss: it can lose data like `reset`.
+
+## Display
+
+The firmware drives the 72x40 OLED with large text instead of the version
+1.0 status lines:
+
+| Situation | Screen |
+| --- | --- |
+| Dongle power-up | RISC-V logo for 3 s |
+| Command or detected event | 3 s large word: `PWR`, `RST`, `REC`, `ON`, `OFF`, `DC`, `ERR`; small second line such as `on`, `press` or `ext` |
+| Any line held by `hold` | `HOLD` and the held line names, until released |
+| Idle, K3 sensed on | `ON` |
+| Idle, K3 sensed off or sensing disabled | RISC-V logo (standby) |
+
+Events stay up for 3 s after a long press ends. Idle screens use low
+contrast and shift up to 2 pixels sideways each minute to limit burn-in.
+`-DK3CTL_EVENT_MS=` and `-DK3CTL_LOGO_MS=` change the timings. The OLED
+behavior compiles but has not been observed on hardware.
+
+The logo is RISC-V International's official stacked white logo, scaled
+and thresholded to 51x40 pixels by [`make-logo.py`](make-logo.py) from the
+published logo pack (its URL and SHA-256 are pinned in the script and the
+generated header). The RISC-V name and logo are trademarks of RISC-V
+International; its [brand guidelines](https://riscv.org/about/brand-guidelines/)
+permit their use for non-commercial projects that follow those guidelines.
+The repository license grants no trademark rights. To regenerate:
+
+```sh
+python3 -B make-logo.py
+```
+
+### Line monitoring - untested
+
+With `K3CTL_MONITOR=1` (default) the firmware also reads the released
+pin 12 (`SLEEP/WAKE`) and pin 8 (`PMIC_RST_OUTn`) lines. A low pulse of
+at least 30 ms after 500 ms high that k3ctl did not cause shows `PWR` or
+`RST` with `ext`, for example from a carrier button or a K3-initiated reset.
+It only reads the existing connections, but the signals' behavior is unknown.
+A floating line while the K3 is off could cause false events;
+`-DK3CTL_MONITOR=0` disables monitoring. `status` reports the current input
+levels as `inpwr`/`inrst` (`-` while k3ctl drives the line) and the last
+event as `ev`; these are logic readings, not voltage measurements.
+
 ## Firmware
 
 The build instructions are setup guidance, **not a recorded reproducer of
@@ -151,8 +248,11 @@ arduino-cli compile --fqbn "$FQBN" firmware/k3ctl
 ```
 
 `CDCOnBoot=cdc` selects USB CDC for `Serial`. Build-time options go in
-`--build-property "build.extra_flags=-DK3CTL_OLED=0"`; combine any power-sense
-flags in that same property rather than supplying it multiple times.
+`--build-property "build.defines=-DK3CTL_OLED=0"`; combine several flags in
+that one property, for example
+`"build.defines=-DK3_SENSE_PIN=10 -DK3CTL_EXTLED_PIN=0"`. **Do not override
+`build.extra_flags`:** in esp32 core 3.3.12 it carries
+`-DARDUINO_USB_CDC_ON_BOOT=1`, so replacing it would drop USB serial.
 
 Upload only to the **verified dongle port**, with all K3 header wires
 disconnected. For the initial upload, the intended board enters ROM download
@@ -216,16 +316,23 @@ timeout to accommodate the requested pulse.
 One nonblank ASCII command line produces an `OK` or `ERR` reply; blank
 lines are ignored. The sequences below describe the **source implementation**,
 not evidence that every command or timing has been tested. The recorded
-hardware results cover reset and the power-button pin only.
-`status` line flags describe firmware-held outputs, not electrical measurements.
+hardware results cover firmware 1.0 reset and power-button-pin behavior only;
+no tested `power on` duration exists. `status` line flags describe
+firmware-held outputs, not electrical measurements. The client waits up to
+12 s for `power on`, 15 s for `power force-off` and *ms* + 3 s for
+`power cycle`; a longer `-t` overrides these.
 
 | command | effect | reply |
 |---|---|---|
-| `ping` | — | `OK pong k3ctl 1.0` |
-| `status` | — | `OK status rst=0 fcrec=0 pwr=0 k3=on\|off\|n/a up=<ms> ver=1.0` |
+| `ping` | — | `OK pong k3ctl 1.1` |
+| `status` | — | `OK status rst=0 fcrec=0 pwr=0 k3=on\|off\|n/a up=<ms> ver=1.1 inpwr=1 inrst=1 ev=PWR` |
 | `reset` | RST low 200 ms | `OK reset` |
 | `recovery` | FC_REC low, wait 300 ms, RST low 200 ms, wait 500 ms, release FC_REC | `OK recovery` |
 | `power [ms]` | SLEEP/WAKE low for *ms* (default 300) | `OK power 300` |
+| `power on` | unless sensed on: SLEEP/WAKE low 1000 ms (`K3CTL_PWR_ON_MS`), then wait up to 5 s for sense | `OK power on k3=on\|n/a`; `ERR power on: k3 still off` |
+| `power off` | unless sensed off: SLEEP/WAKE low 300 ms | `OK power off k3=<state>` |
+| `power force-off` | SLEEP/WAKE low up to 10 s (`K3CTL_PWR_FORCE_MS`), released early once sensed off | `OK power force-off <ms> k3=<state>` |
+| `power cycle [ms]` | optional DC switch cuts power for *ms* (default 3000) | `OK power cycle 3000`; `ERR` if not built in |
 | `press <rst\|fcrec\|pwr> [ms]` | that line low for *ms* (default 200, max 15000) | `OK press fcrec 200` |
 | `hold <line>` | assert; requests auto-release after 30 s, subject to loop servicing | `OK hold fcrec (auto-release in 30 s)` |
 | `release <line>\|all` | release | `OK release fcrec` |
@@ -237,15 +344,15 @@ duration/arity checks; it is not needed for normal reset use.
 
 ## Known limits
 
-The `hold` release timer is checked in the main loop, between synchronous
-command handlers. Blocking commands can delay that check; it is **not an
-independent 30-second hardware failsafe**. Host disconnects, dongle reset,
+The `hold` release timer is checked by the firmware loop, including during
+the waits inside blocking commands, but it is still software: it is **not
+an independent 30-second hardware failsafe**. Host disconnects, dongle reset,
 startup transients and arbitrary command combinations have not been
 validated. Keep physical reset/power access and an attended serial console.
 
-The OLED/LED code is intended to display power state, last action, held-line
-flags and uptime. It has no separate recorded hardware result. No-display
-builds and the optional sensing circuits also remain untested.
+The OLED, line monitoring, external LED and DC-switch code compile but have
+no recorded hardware result. No-display builds and the optional sensing
+circuits also remain untested.
 
 ## Hardware-free validation
 
@@ -255,7 +362,8 @@ python3 -B tests/test_k3ctl.py
 
 The tests exercise the Python client against a fake dongle on a
 pseudo-terminal, including replies, usage errors, missing/silent devices,
-and a dropped initial ping. They do not run the ESP32 firmware or establish
+a dropped initial ping, and the `power on|off|force-off|cycle` argument
+forms. They do not run the ESP32 firmware or establish
 K3 recovery, power, display, electrical safety or hardware timing results.
 
 Further hardware results need an attended test recording the module/carrier,
@@ -269,6 +377,8 @@ GPL-2.0-only; see the repository [LICENSE](../../LICENSE).
 
 The initial implementation was prepared with **Claude Fable 5.1**, as
 reported by the maintainer. Repository integration, licensing headers and
-documentation were assisted by **GitHub Copilot CLI**. The human contributor
+documentation were assisted by **GitHub Copilot CLI**, as were the
+version 1.1 firmware (display, logo, line monitoring and power commands),
+`make-logo.py` and related client changes. The human contributor
 remains responsible for reviewing and understanding the contribution,
 provenance and publication under the [LLM policy](../../LLM-POLICY.md).
