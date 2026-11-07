@@ -40,25 +40,28 @@ RX/TX positions; do not reuse an older diagram.
 | --- | --- | --- |
 | 3 | `UART0_RXD` (board RX) | Adapter **TX** to board RX |
 | 4 | `UART0_TXD` (board TX) | Adapter **RX** to board TX |
-| 5, 6 | `BMCU_ACOK`, `AUTO_ON_DIS` | **Leave unbridged on the recorded Firefly setup**; see the power-button observations below |
+| 5, 6 | `BMCU_ACOK`, `AUTO_ON_DIS` | Power policy jumper; see the observed bridged/unbridged behavior below |
 | 7, 9, 11 | GND | Adapter ground and the ground return for recovery/reset |
 | 8 | Firefly `RST`; vendor `PMIC_RST_OUTn` | Momentary connection to confirmed GND for reset |
 | 10 | Firefly `FC_REC`; vendor `FORCE_RECOVERY` | Hold to confirmed GND for recovery entry |
-| 12 | `SLEEP/WAKE` | Power-button signal; see the recorded restriction below |
+| 12 | `SLEEP/WAKE` | Power-button signal; see the bounded results below |
 
 Use suitable jumper leads or normally-open momentary switches for the
 control signals. The serial adapter connects only RX, TX and ground:
 **leave its power/VCC lead disconnected**.
 
-**Do not short K3 header pins 5 and 6 together on this Firefly setup.**
-On 2026-10-30 the maintainer reported the power-button pin connected and
-working, but the board did not power back on via pin 12 with pins 5/6
-bridged. On 2026-10-31, with them unbridged, pin 12 pulses of 300 ms to
-12 s did not power a software-off board on either, but replugging DC power
-booted it. Leave them unbridged so that DC power-up boots the board. The V2.1 guide's
-button-power-on jumper guidance does not match this observation; the reason
-remains unresolved. See the
-[bounded hardware result](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md#recorded-hardware-results).
+**Disconnect DC before changing the pins 5/6 jumper.** Its configuration is
+not a universal power-on fix. With pins unbridged, DC reapplication
+auto-booted in the October 31 test, but pin 12 pulses did not wake after
+software shutdown. In the November 6-7 bridged test, DC insertion stayed
+off and a 300 ms press powered on; however, the same press still failed
+after software shutdown until DC was removed/reconnected.
+
+The October 30 bridged power-on failure is retained; its pulse length and
+software/build versions were not recorded. The V2.1 guide's button-power-on
+bridge guidance works in some newly observed off states, not all. See the
+[bounded hardware results](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md#recorded-hardware-results)
+and the attended sequence below before choosing the jumper behavior.
 
 ## Normal setup: keep working firmware
 
@@ -81,16 +84,53 @@ The standalone
 [`k3ctl` bundle](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md)
 provides ESP32-C3 firmware, a Linux Python client, a udev rule and
 hardware-free client tests for the matching Firefly-carrier header.
-**Reset and powering off a running board are maintainer-reported as
-working; powering the board on via the power-button pin has not worked.**
-The power-button result was reported on 2026-10-30, subject to the pins 5/6
-restriction above; its command/timing and software/build versions were not
-recorded. On 2026-10-31, with pins 5/6 unbridged and firmware 1.0, pulses of
-300 ms to 12 s did not wake the board after a Fedora 45 software poweroff;
-replugging DC power booted it. The reset test date and software/build
-versions are also unrecorded. Recovery entry, manual line commands, sensing
-and the bundle's version 1.1 display and power commands remain unverified. Match the header and read the bundle's electrical and
+**Reset is maintainer-reported working; power-button behavior depends on
+the off state.** Earlier October 30-31 failures are preserved in the
+bundle's recorded results. The reset test date and software/build versions
+remain unrecorded. Match the header and read the bundle's electrical and
 device-selection cautions before connecting anything.
+
+### Attended power and display results
+
+On **November 6-7, 2026 (operator local time, UTC-08:00)**, the maintainer
+observed the following sequence on the K3-CoM260/Firefly setup with
+**pins 5/6 bridged**, using k3ctl firmware **1.1** and no power-sense wire:
+
+| Test | Result |
+| --- | --- |
+| Reconnect DC | K3 stayed off |
+| 300 ms power press after DC insertion | Powered on with console output |
+| While running: 300 ms, 1 s, repeated 3 s, 6 s | K3 stayed on |
+| While running: 12 s | Power disappeared abruptly |
+| 300 ms after forced power-off | Powered on again |
+| Software shutdown using `sudo poweroff` in the K3 console | Powered off |
+| 300 ms after software shutdown with DC connected | Stayed off; no console output |
+| Remove/reconnect DC, then 300 ms | Powered on with console output |
+
+The 12-second hold is **forced power loss**, not clean shutdown. The exact
+forced-off threshold and the reason software-shutdown wake differs remain
+unresolved. All pulses received `OK` replies, which alone do not establish
+the K3 outcome. These explicit-pulse tests do not validate the named
+`power on|off|force-off` modes or their defaults.
+
+The dongle build used Arduino CLI 1.5.1, ESP32 core 3.3.12 and U8g2 2.36.19,
+with `esp32:esp32:esp32c3:CDCOnBoot=cdc,FlashSize=4M`. The current K3
+firmware and OS/kernel revision were not freshly established; do not borrow
+the October 31 kernel version for this November result. Carrier PCB
+revision remains unknown.
+
+The maintainer also confirmed the **1.1** startup logo and readable
+three-second `ERR` event. After the **1.1.1** upload on November 7, the logo
+started bright, dimmed after about 10 seconds and moved horizontally
+without clipping. An `ERR` event restarted the bright centred idle period
+before dimming/movement resumed. Both uploads were made with the header
+wires disconnected. Power sensing and the sensed `ON` screensaver remain
+untested on hardware; recovery, external LED/DC-switch operation and
+broader fault behavior are also unverified.
+
+Unplugging DC produced a `PWR` display event in the 1.1 test. With power
+sensing disabled, that is consistent with the monitored line going low,
+not proof of a physical button press or a measured K3 power state.
 
 It is optional, not a Fedora prerequisite, and does not carry the K3 serial
 console. Keep the separate serial adapter and physical reset/power access.
@@ -153,15 +193,15 @@ the normal serial checkpoint before returning to the Fedora recipe.
 
 ## Technical notes
 
-**Applies to:** Recorded Firefly-carrier K3-CoM260 kit; carrier PCB revision unknown. The serial/boot route uses Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot; k3ctl-test software/build versions were not recorded.
+**Applies to:** Recorded Firefly-carrier K3-CoM260 kit; carrier PCB revision unknown. The serial/boot route uses Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot. The November k3ctl results use dongle firmware 1.1/1.1.1, ESP32 core 3.3.12 and U8g2 2.36.19; current K3 firmware and OS/kernel revision were not freshly established.
 
-**Evidence:** Public October 20 and October 19 F45 host scope, preserved Fedora serial/Firefly recovery records, and maintainer-reported k3ctl reset and power-button results. The conditional V2.1 UART/ground reference retains its September 27 review; pins 5, 6 and 12 were source-checked on 2026-10-30, not electrically revalidated.
+**Evidence:** Public October 20 and October 19 F45 host scope, preserved Fedora serial/Firefly recovery records, earlier maintainer-reported k3ctl results, and the November 6-7 attended power/display sequence documented here and in the public k3ctl guide. The conditional V2.1 UART/ground reference retains its September 27 review; pins 5, 6 and 12 were source-checked on 2026-10-30. November outcomes do not establish voltage or back-feed safety.
 
-**Source review:** 2026-10-30.
+**Source review:** 2026-11-07.
 
-**Hardware observation:** 2026-10-20 and 2026-10-19 F45 temporary boots in the public host record (on 2026-10-20, after a fresh installation into existing p4/p5 partitions: one 7.2.7 bootstrap, the exact 7.2.8 update and three attended 7.2.8 boots) and 2026-09-25 archived serial/boot snapshot; successful Minimal v4.0.1 factory flash is recorded separately without a test date. On 2026-10-30 the maintainer reported the power-button pin connected and working, but no power-on via that pin with header pins 5/6 bridged; on 2026-10-31, with them unbridged, k3ctl 1.0 pulses of 300 ms to 12 s also did not power on a board after software poweroff, while replugging DC did. Reset was previously reported working without a test date; software/build versions for both results and the power-test command/timing were not recorded. No hardware was operated while preparing this documentation, and no USB recovery result was added.
+**Hardware observation:** November 6-7, 2026, operator local time (UTC-08:00): the bounded bridged power sequence and dongle display results above. October 30-31 power-on failures remain recorded, with October 31 using k3ctl 1.0 and Fedora 45 kernel 7.3.0-65.1.riscv64.omni.fc45; the earlier reset test date and October 30 command/timing/build are unknown. Existing October 20/19 F45 temporary boots and the September 25 archived serial/boot snapshot are unchanged; the successful Minimal v4.0.1 factory flash still lacks a test date. No further hardware was operated during this documentation update, and no USB recovery result was added.
 
-**Destructive operations:** Serial setup does not erase storage. USB reset abruptly restarts the K3 and can lose unsaved data. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
+**Destructive operations:** Serial setup does not erase storage. USB reset, a long forced-off hold or cutting DC can lose unsaved data. Disconnect DC before changing the jumper, and disconnect K3 header wires before uploading/resetting the dongle. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
 
 **Previous:** [Hardware and setup](https://github.com/xjamesmorris/k3-com260-info/wiki/Hardware-and-Setup).
 **Next:** [Install Fedora](https://github.com/xjamesmorris/k3-com260-info/wiki/Install-Fedora).

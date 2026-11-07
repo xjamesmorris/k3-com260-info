@@ -6,13 +6,14 @@ An ESP32-C3 dongle implements header-button sequences for a **K3-CoM260 on
 the Firefly carrier**, controlled from a Linux workstation over USB. The
 dongle handles timing; the Python client sends a command and reports its reply.
 
-**Hardware status: reset and powering off a running board are
-maintainer-reported as working. Powering the board back on through the
-power-button pin has not worked.** On 2026-10-31, with pins 5/6 unbridged,
-no pulse from 300 ms to 12 s woke a board after a software poweroff; only
-replugging DC did. See [recorded hardware results](#recorded-hardware-results).
-Other commands, recovery entry, power sensing, line monitoring, the optional
-DC switch and LED remain unverified. The observed version 1.1 logo and `ERR`
+**Hardware status: reset is maintainer-reported working. With pins 5/6
+bridged, a 300 ms press powered on after DC insertion or forced power-off,
+but not after software shutdown; a 12 s hold cut power abruptly.**
+Removing/reconnecting DC followed by 300 ms restored power-on after the
+software-shutdown failure. Earlier failures with both jumper configurations
+remain recorded; see [recorded hardware results](#recorded-hardware-results).
+Recovery entry, power sensing, named power modes, the optional DC switch
+and LED remain unverified. The observed version 1.1 logo and `ERR`
 display and version 1.1.1 logo screensaver are described under
 [Display](#display). The carrier
 PCB revision was not recorded for any result, and the earlier results also
@@ -72,16 +73,18 @@ before wiring.** The
 [conditional header reference](../../wiki/Console-and-Recovery.md#conditional-12-pin-header-reference)
 explains the Firefly scope and the vendor reference-kit guide. This is not
 a universal K3-CoM260 pinout; do not apply it to another carrier by inference.
-For power-button control, **leave K3 header pins 5 and 6 unbridged** unless
-deliberately running the attended bridged test; see the
-[recorded results](#recorded-hardware-results). Power sensing remains
-untested design guidance.
+Choose the pins **5/6** jumper configuration from the
+[recorded results](#recorded-hardware-results), not a blanket power-on
+assumption: unbridged DC insertion auto-booted in October; bridged DC
+insertion stayed off and a 300 ms press started it in November, but waking
+after software shutdown still failed. Disconnect DC before changing the
+jumper. Power sensing remains untested design guidance.
 
 | ESP32-C3 | Connection | Matching Firefly 12-pin header | Function / status |
 |---|---|---|---|
 | GPIO3 | Pull low / release | pin 8, `PMIC_RST_OUTn` / `RST` | Reset; maintainer-reported working |
 | GPIO4 | Pull low / release | pin 10, `FORCE_RECOVERY` / `FC_REC` | Recovery; untested |
-| GPIO7 | Pull low / release | pin 12, `SLEEP/WAKE` | Power button; powers a running board off (maintainer-reported); did not power it on with pins 5/6 unbridged |
+| GPIO7 | Pull low / release | pin 12, `SLEEP/WAKE` | Power button; bridged 300 ms power-on worked in specific off states; 12 s forced power-off; software-shutdown wake unresolved |
 | GND | Common ground | confirmed GND, pin 9 (7 or 11 in the matching reference) | Control-signal return |
 | GPIO10 | Via optional sensing circuit only | pins 2 / 1, `PC_LED+` / `PC_LED-` | Power sensing; untested, disabled by default |
 | GPIO0 | Optional external LED + resistor to GND | none (dongle side only) | Status LED; untested, disabled by default |
@@ -109,19 +112,16 @@ connected to the matched RX, TX and ground only, with its VCC lead disconnected.
 The maintainer previously reported `reset` working; its test date was not
 recorded. On **2026-10-30**, the maintainer reported that the power-button pin
 was connected and verified working. **With K3 header pins 5 and 6 shorted
-together, the board did not power back on via the power-button pin.** Leave
-those two pins unbridged for this Firefly-carrier setup; with them unbridged,
-reapplying DC power boots the board (recorded 2026-10-31, below).
+together, the board did not power back on via the power-button pin.**
+The exact command and pulse duration were not recorded. This earlier
+failure is retained alongside the later successful bridged test below.
 
 The [SpacemiT reference-kit guide V2.1, section 5.3](https://cdn-resource.spacemit.com/file/product/K3/k3_com260_ug_en.pdf)
 describes bridging pin 5 (`BMCU_ACOK`) and pin 6 (`AUTO_ON_DIS`) to enable
-button power-on. That guidance does not match the reported behavior; the
-reason remains unresolved. This observation is not a proven correction for
-every carrier or firmware version.
-
-The exact command and pulse duration used for the 2026-10-30 power test were
-not recorded. This establishes the reported pin function, not validation of
-every `power`, `press` or `hold` variant or timing.
+button power-on. The November test demonstrates button power-on with that
+bridge in some off states, but not after software shutdown. The reasons
+for that failure and the October bridged failure remain unresolved; this
+is not a proven configuration for every carrier or firmware version.
 
 On **2026-10-31** (21:31-21:41 UTC), with the maintainer present, an attended
 test used k3ctl firmware `1.0` with power sensing not wired (`k3=n/a`) and
@@ -134,13 +134,41 @@ booted to Fedora. No physical power button is attached to the carrier. On
 2026-11-01 the maintainer reported that a `power` tap powers off a running
 Fedora 45 board; the duration used is unrecorded.
 
-**Untested next step:** an attended rerun with pins 5/6 **bridged**, which
-also checks whether DC insertion still auto-boots. Unresolved explanations
-include: SLEEP/WAKE being ignored or unpowered in this off state, or power-on
-from that pin needing the bridge plus a press of unknown length. The
-optional [DC switch](#optional-dc-switch---untested) is a fallback design;
-it relies on the recorded auto-boot when DC is reapplied with pins 5/6
-unbridged.
+On **November 6-7, 2026 (operator local time, UTC-08:00)**, an attended
+test on the same K3-CoM260/Firefly setup used firmware **1.1**, Arduino CLI
+1.5.1, ESP32 core 3.3.12 and U8g2 2.36.19, built for
+`esp32:esp32:esp32c3:CDCOnBoot=cdc,FlashSize=4M`. Power sensing was not wired
+(`k3=n/a`); the current K3 firmware, OS/kernel revision and carrier PCB
+revision were not freshly established. Console and power outcomes below
+were observed and reported by the maintainer, not inferred from replies.
+DC was disconnected before fitting the pins **5/6 bridge**, which remained
+fitted throughout this sequence:
+
+| Condition / command | Observed result |
+| --- | --- |
+| Reconnect DC with the bridge fitted | Stayed off |
+| `power 300` after DC insertion | Powered on; console output appeared |
+| While running: `power 300`, `power 1000`, repeated `power 3000`, `power 6000` | Stayed on |
+| While running: `power 12000` | Power disappeared abruptly |
+| `power 300` after that forced power-off | Powered on again |
+| After boot, maintainer ran `sudo poweroff` in the K3 console | Powered off |
+| `power 300` after software shutdown, with DC still connected | Stayed off; no console output |
+| Remove/reconnect DC, then `power 300` | Powered on; console output appeared |
+
+Each pulse returned the corresponding `OK power <ms>` reply. The outcome
+of the first 3-second press was not established, so it was repeated; the
+repeat left the K3 on. The 12-second hold was **forced power loss**, not
+clean OS shutdown. The exact forced-off threshold is not established.
+
+**Still unresolved:** waking from software shutdown without removing DC,
+the electrical/firmware reason for the different off states, and broader
+repeatability. These tests used explicit pulse lengths: named `power on`,
+`power off` and `power force-off` were not validated. Their unchanged
+defaults (1000 ms, 300 ms and 10000 ms) are not equivalent to the two
+successful 300 ms power-on / 12000 ms forced-off actions.
+The optional [DC switch](#optional-dc-switch---untested) remains an unbuilt,
+untested fallback; do not equate the manual DC-cycle result with its safety
+or operation.
 
 ### Optional power sense - untested
 
