@@ -63,11 +63,11 @@ setup and onboard LED behavior, and links to the
 These sources concern the ESP32-C3 dongle, not the K3 header wiring or the
 reset result above.
 
-![ABRobot ESP32-C3 OLED dongle displaying the RISC-V logo with a K3-CoM260 on the Firefly carrier](k3ctl_c3.png)
+[![ABRobot ESP32-C3 OLED dongle displaying the RISC-V logo with a K3-CoM260 on the Firefly carrier](k3ctl_c3-small.png)](k3ctl_c3.png)
 
-The maintainer's setup, showing the RISC-V logo on the dongle. The photo is
-for identification, not a wiring diagram or evidence that the untested
-functions work.
+The maintainer's setup, showing the RISC-V logo on the dongle. Click the
+photo for the full-size view. The photo is for identification, not a wiring
+diagram or evidence that the untested functions work.
 
 **Match the actual carrier's numbering, orientation, ground and signals
 before wiring.** The
