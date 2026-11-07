@@ -58,7 +58,7 @@
 #include "riscv_logo.h"
 #endif
 
-#define K3CTL_VERSION "1.1"
+#define K3CTL_VERSION "1.1.1"
 
 // ---- pins -------------------------------------------------------------------
 static const int PIN_RST   = 3;
@@ -129,7 +129,8 @@ static const uint32_t MON_DEBOUNCE_MS = 30;   // low pulse must last this long
 static const uint32_t MON_ARM_MS    = 500;    // ...after this long stable high
 static const uint32_t MON_QUIET_MS  = 200;    // ignore our own release edge
 static const uint32_t DISPLAY_MS    = 100;    // OLED refresh period
-static const uint32_t SHIFT_MS      = 60000;  // idle burn-in shift period
+static const uint32_t IDLE_BRIGHT_MS = 10000;
+static const uint32_t SHIFT_MS      = 1000;   // screensaver: one pixel per second
 
 // ---- state ------------------------------------------------------------------
 struct Line {
@@ -324,14 +325,19 @@ static const char *inputLevel(const Line &l) {
 // ---- display ----------------------------------------------------------------
 #if K3CTL_OLED
 static uint8_t curContrast = 0;
+static uint32_t idleSince = 0;
+static bool idleActive = true;
 static void contrast(uint8_t c) {
   if (c != curContrast) { u8g2.setContrast(c); curContrast = c; }
 }
 
-// Small horizontal drift so a static idle screen does not burn in.
-static int idleShift() {
-  static const int8_t dx[] = {0, 1, 2, 1, 0, -1, -2, -1};
-  return dx[(millis() / SHIFT_MS) % (sizeof(dx) / sizeof(dx[0]))];
+static int idleShift(uint32_t elapsed, int width) {
+  int travel = (72 - width) / 2;
+  if (travel <= 0) return 0;
+  int phase = (elapsed / SHIFT_MS) % (4 * travel);
+  if (phase <= travel) return phase;
+  if (phase <= 3 * travel) return 2 * travel - phase;
+  return phase - 4 * travel;
 }
 
 static void drawLogo(int dx) {
@@ -372,9 +378,11 @@ static void display() {
 #if K3CTL_OLED
   u8g2.clearBuffer();
   if (ev.active) {
+    idleActive = false;
     contrast(255);
     drawBig(ev.text, ev.label, 0);
   } else if (holdActive) {
+    idleActive = false;
     char names[16] = "";
     for (size_t i = 0; i < NLINES; i++) {
       if (!lines[i].holdCmd) continue;
@@ -387,9 +395,20 @@ static void display() {
     contrast(255);
     drawLogo(0);
   } else {
-    contrast(16);
-    if (k3State == K3_ON) drawBig("ON", "", idleShift());
-    else drawLogo(idleShift());
+    if (!idleActive) {
+      idleSince = now;
+      idleActive = true;
+    }
+    uint32_t idleMs = now - idleSince;
+    bool saving = idleMs >= IDLE_BRIGHT_MS;
+    contrast(saving ? 16 : 255);
+    uint32_t movingMs = saving ? idleMs - IDLE_BRIGHT_MS : 0;
+    if (k3State == K3_ON) {
+      u8g2.setFont(u8g2_font_logisoso24_tr);
+      drawBig("ON", "", idleShift(movingMs, u8g2.getStrWidth("ON")));
+    } else {
+      drawLogo(idleShift(movingMs, RISCV_LOGO_W));
+    }
   }
   u8g2.sendBuffer();
 #endif
@@ -588,6 +607,7 @@ void setup() {
   Wire.begin(PIN_SDA, PIN_SCL);
   u8g2.begin();
   contrast(255);
+  idleSince = millis();
 #endif
   bootUntil = millis() + K3CTL_LOGO_MS;
   display();

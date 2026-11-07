@@ -12,10 +12,12 @@ power-button pin has not worked.** On 2026-10-31, with pins 5/6 unbridged,
 no pulse from 300 ms to 12 s woke a board after a software poweroff; only
 replugging DC did. See [recorded hardware results](#recorded-hardware-results).
 Other commands, recovery entry, power sensing, line monitoring, the optional
-DC switch and LED, and the version 1.1 display remain unverified. The carrier
+DC switch and LED remain unverified. The observed version 1.1 logo and `ERR`
+display and version 1.1.1 logo screensaver are described under
+[Display](#display). The carrier
 PCB revision was not recorded for any result, and the earlier results also
 lack K3 firmware/OS and ESP32 build versions. The firmware source now reports
-protocol version `1.1`; the recorded results used firmware `1.0`.
+protocol version `1.1.1`; the earlier power-control results used firmware `1.0`.
 
 **Reset abruptly restarts the K3 and can lose unsaved data.** An `OK` reply
 acknowledges a firmware command, not a verified K3 boot or power-state change.
@@ -202,10 +204,28 @@ The firmware drives the 72x40 OLED with large text instead of the version
 | Idle, K3 sensed on | `ON` |
 | Idle, K3 sensed off or sensing disabled | RISC-V logo (standby) |
 
-Events stay up for 3 s after a long press ends. Idle screens use low
-contrast and shift up to 2 pixels sideways each minute to limit burn-in.
-`-DK3CTL_EVENT_MS=` and `-DK3CTL_LOGO_MS=` change the timings. The OLED
-behavior compiles but has not been observed on hardware.
+Events stay up for 3 s after a long press ends. In firmware **1.1.1**, the
+logo starts centred at full brightness. After 10 s from startup, it dims
+and bounces horizontally at one pixel per second, staying fully on-screen.
+The same screensaver applies to `ON` when power sensing is enabled.
+Events and `HOLD` stay bright and centred; returning to idle starts a new
+10-second bright period before dimming and movement resume.
+`-DK3CTL_EVENT_MS=` and `-DK3CTL_LOGO_MS=` change the event and boot-logo
+timings.
+
+On November 6, 2026 (operator local time, UTC-08:00), the maintainer observed
+the firmware 1.1 startup/idle logo and confirmed a large `ERR` event was
+readable and returned to the logo on the ABRobot dongle. That build used
+ESP32 core 3.3.12 and U8g2 2.36.19, with power sensing disabled.
+
+On November 7, 2026 (operator local time, UTC-08:00), firmware 1.1.1 was
+uploaded with the K3 header wires disconnected, using the same core and
+library versions. The maintainer confirmed the logo started bright,
+then dimmed and moved without clipping. A harmless unknown-command `ERR`
+event was also confirmed to return to a bright centred logo for about
+10 seconds before dimming and movement resumed. Power sensing remained
+disabled; the `ON` screensaver has compile/native-test coverage but no
+hardware observation.
 
 The logo is RISC-V International's official stacked white logo, scaled
 and thresholded to 51x40 pixels by [`make-logo.py`](make-logo.py) from the
@@ -324,8 +344,8 @@ firmware-held outputs, not electrical measurements. The client waits up to
 
 | command | effect | reply |
 |---|---|---|
-| `ping` | — | `OK pong k3ctl 1.1` |
-| `status` | — | `OK status rst=0 fcrec=0 pwr=0 k3=on\|off\|n/a up=<ms> ver=1.1 inpwr=1 inrst=1 ev=PWR` |
+| `ping` | — | `OK pong k3ctl 1.1.1` |
+| `status` | — | `OK status rst=0 fcrec=0 pwr=0 k3=on\|off\|n/a up=<ms> ver=1.1.1 inpwr=1 inrst=1 ev=PWR` |
 | `reset` | RST low 200 ms | `OK reset` |
 | `recovery` | FC_REC low, wait 300 ms, RST low 200 ms, wait 500 ms, release FC_REC | `OK recovery` |
 | `power [ms]` | SLEEP/WAKE low for *ms* (default 300) | `OK power 300` |
@@ -379,6 +399,7 @@ The initial implementation was prepared with **Claude Fable 5.1**, as
 reported by the maintainer. Repository integration, licensing headers and
 documentation were assisted by **GitHub Copilot CLI**, as were the
 version 1.1 firmware (display, logo, line monitoring and power commands),
+the 1.1.1 screensaver update,
 `make-logo.py` and related client changes. The human contributor
 remains responsible for reviewing and understanding the contribution,
 provenance and publication under the [LLM policy](../../LLM-POLICY.md).
