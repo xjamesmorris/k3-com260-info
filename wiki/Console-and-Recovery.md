@@ -128,6 +128,8 @@ wires disconnected. Power sensing and the sensed `ON` screensaver remain
 untested on hardware; recovery, external LED/DC-switch operation and
 broader fault behavior are also unverified.
 
+Video: [Watch k3ctl v1.1.1 on YouTube](https://www.youtube.com/shorts/w1l2AyYvUZs).
+
 Unplugging DC produced a `PWR` display event in the 1.1 test. With power
 sensing disabled, that is consistent with the monitored line going low,
 not proof of a physical button press or a measured K3 power state.

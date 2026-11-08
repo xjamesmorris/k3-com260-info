@@ -69,6 +69,8 @@ The maintainer's setup, showing the RISC-V logo on the dongle. Click the
 photo for the full-size view. The photo is for identification, not a wiring
 diagram or evidence that the untested functions work.
 
+Video: [Watch k3ctl v1.1.1 on YouTube](https://www.youtube.com/shorts/w1l2AyYvUZs).
+
 **Match the actual carrier's numbering, orientation, ground and signals
 before wiring.** The
 [conditional header reference](../../wiki/Console-and-Recovery.md#conditional-12-pin-header-reference)
