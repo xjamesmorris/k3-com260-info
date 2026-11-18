@@ -85,7 +85,8 @@ The standalone
 provides ESP32-C3 firmware, a Linux Python client, a udev rule and
 hardware-free client tests for the matching Firefly-carrier header.
 **Reset is maintainer-reported working; power-button behavior depends on
-the off state.** Earlier October 30-31 failures are preserved in the
+the off state.** On November 17, `recovery` entered BootROM USB mode once
+on a halted board. Earlier October 30-31 failures are preserved in the
 bundle's recorded results. The reset test date and software/build versions
 remain unrecorded. Match the header and read the bundle's electrical and
 device-selection cautions before connecting anything.
@@ -125,8 +126,8 @@ started bright, dimmed after about 10 seconds and moved horizontally
 without clipping. An `ERR` event restarted the bright centred idle period
 before dimming/movement resumed. Both uploads were made with the header
 wires disconnected. Power sensing and the sensed `ON` screensaver remain
-untested on hardware; recovery, external LED/DC-switch operation and
-broader fault behavior are also unverified.
+untested on hardware; external LED/DC-switch operation and broader fault
+behavior are also unverified. Recovery entry is recorded below.
 
 Video: [Watch k3ctl v1.1.1 on YouTube](https://www.youtube.com/shorts/w1l2AyYvUZs).
 
@@ -140,6 +141,31 @@ An abrupt reset can lose unsaved data and follows the existing saved boot
 path, not the last temporary Fedora selection. The flashing script does not
 invoke `k3ctl` and has no `-r` option; this does not replace the recorded
 manual recovery sequence below or establish a new factory-flash result.
+
+### Attended recovery-entry result
+
+On **November 17, 2026 (20:52-21:44 UTC)**, with the maintainer at the
+board, the same K3-CoM260/Firefly setup entered BootROM USB mode through
+`k3ctl recovery`, using dongle firmware **1.1.1** and no power-sense wire.
+Fedora had been stopped with `systemctl reboot`, which halted at
+`reboot: Restarting system`, so each send reached a halted, powered board.
+The K3 firmware and kernel versions, jumper state and carrier PCB revision
+were not recorded with this result.
+
+| Test | Result |
+| --- | --- |
+| `recovery` with the GPIO4 wire not attached | `OK recovery`; ordinary boot from NOR (`sys: 0x10000200`, then `U-Boot SPL`) |
+| `recovery` with GPIO4 attached to FC_REC, pin 10 | `OK recovery`; within a second the serial log ended at `ROM: usb download handler` (first line `sys: 0x10001200`), with no `U-Boot SPL` banner |
+| Dongle `status` in the mode | `fcrec=0`, `ev=REC` |
+| USB-C cabled after entry | New device `361c:1001`, `DFU USB download gadget`, interface `ff/42/03` |
+| `fastboot getvar version-brom`, once | `version-brom: 1.0` |
+| `reset` | NOR boot within a second; USB device gone |
+
+Nothing was staged or flashed, and read-only NOR checksums before and after
+were equal. This is one successful entry, not a factory-flash or
+repeatability result; entry while Linux runs or from power-off is untested.
+The full sequence and its limits are in the
+[k3ctl recovery result](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md#recovery-entry-november-17-2026).
 
 ## Decide whether recovery is needed
 
@@ -174,7 +200,9 @@ products or other carriers:
 4. Connect the carrier's USB-C port to the Linux workstation with a data-capable cable.
 
 The tool guide's USB check should show `???????????? DFU download`; the
-blank serial is normal. If no device appears, recheck recovery entry and the
+blank serial is normal. In the recorded k3ctl entry, the serial console's
+BootROM output ended at `ROM: usb download handler` with no `U-Boot SPL`
+banner. If no device appears, recheck recovery entry and the
 data cable. `no permissions` indicates host USB-access permissions, not a
 reason to change the wiring or repeatedly reset the board.
 
@@ -195,13 +223,13 @@ the normal serial checkpoint before returning to the Fedora recipe.
 
 ## Technical notes
 
-**Applies to:** Recorded Firefly-carrier K3-CoM260 kit; carrier PCB revision unknown. The serial/boot route uses Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot. The November k3ctl results use dongle firmware 1.1/1.1.1, ESP32 core 3.3.12 and U8g2 2.36.19; current K3 firmware and OS/kernel revision were not freshly established.
+**Applies to:** Recorded Firefly-carrier K3-CoM260 kit; carrier PCB revision unknown. The serial/boot route uses Bianbu Minimal K3 v4.0.1 non-UEFI U-Boot. The November k3ctl results use dongle firmware 1.1/1.1.1, ESP32 core 3.3.12 and U8g2 2.36.19, with the November 17 recovery entry on firmware 1.1.1; current K3 firmware and OS/kernel revision were not freshly established.
 
-**Evidence:** Public October 20 and October 19 F45 host scope, preserved Fedora serial/Firefly recovery records, earlier maintainer-reported k3ctl results, and the November 6-7 attended power/display sequence documented here and in the public k3ctl guide. The conditional V2.1 UART/ground reference retains its September 27 review; pins 5, 6 and 12 were source-checked on 2026-10-30. November outcomes do not establish voltage or back-feed safety.
+**Evidence:** Public October 20 and October 19 F45 host scope, preserved Fedora serial/Firefly recovery records, earlier maintainer-reported k3ctl results, the November 6-7 attended power/display sequence and the November 17 attended recovery entry documented here and in the public k3ctl guide. The conditional V2.1 UART/ground reference retains its September 27 review; pins 5, 6 and 12 were source-checked on 2026-10-30. November outcomes do not establish voltage or back-feed safety.
 
-**Source review:** 2026-11-07.
+**Source review:** 2026-11-18.
 
-**Hardware observation:** November 6-7, 2026, operator local time (UTC-08:00): the bounded bridged power sequence and dongle display results above. October 30-31 power-on failures remain recorded, with October 31 using k3ctl 1.0 and Fedora 45 kernel 7.3.0-65.1.riscv64.omni.fc45; the earlier reset test date and October 30 command/timing/build are unknown. Existing October 20/19 F45 temporary boots and the September 25 archived serial/boot snapshot are unchanged; the successful Minimal v4.0.1 factory flash still lacks a test date. No further hardware was operated during this documentation update, and no USB recovery result was added.
+**Hardware observation:** November 17, 2026, 20:52-21:44 UTC: one k3ctl `recovery` entry into BootROM USB mode on a halted board, one `version-brom` query and a `reset` back to NOR boot; an earlier send with the recovery wire unattached was an ordinary reset. November 6-7, 2026, operator local time (UTC-08:00): the bounded bridged power sequence and dongle display results above. October 30-31 power-on failures remain recorded, with October 31 using k3ctl 1.0 and Fedora 45 kernel 7.3.0-65.1.riscv64.omni.fc45; the earlier reset test date and October 30 command/timing/build are unknown. Existing October 20/19 F45 temporary boots and the September 25 archived serial/boot snapshot are unchanged; the successful Minimal v4.0.1 factory flash still lacks a test date. No hardware was operated during this documentation update, and no factory flash followed the k3ctl recovery entry.
 
 **Destructive operations:** Serial setup does not erase storage. USB reset, a long forced-off hold or cutting DC can lose unsaved data. Disconnect DC before changing the jumper, and disconnect K3 header wires before uploading/resetting the dongle. Factory flashing rewrites NOR and all UFS, including the saved environment, and attempts an EC firmware update; NVMe is not erased.
 

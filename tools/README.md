@@ -30,15 +30,17 @@ Do not change the jumper with DC connected or generalize this result to
 another carrier or firmware.
 
 The 1.1.1 bright-then-dim moving logo and event-reset countdown were observed
-on the dongle. Recovery entry, power sensing, the sensed `ON` display,
+on the dongle. On 2026-11-17, `recovery` entered BootROM USB mode once on a
+halted board (`version-brom: 1.0`); with its wire unattached it only reset
+the board. Power sensing, the sensed `ON` display,
 external LED/DC switch and named `power on|off|force-off` modes remain
 unverified; client/build checks are not hardware evidence. Reset and forced
 power-off can lose unsaved data.
 
 This is a standalone tool, not a Fedora installation prerequisite.
 `k3-flash-bianbu.sh` does not invoke it and has no `-r` option; keep the
-documented manual recovery procedure until an attended result establishes
-any alternative.
+documented manual recovery procedure for factory flashing, since no flash
+has followed a k3ctl recovery entry.
 
 ## k3-flash-bianbu.sh: factory flashing
 

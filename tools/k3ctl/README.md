@@ -10,10 +10,12 @@ dongle handles timing; the Python client sends a command and reports its reply.
 bridged, a 300 ms press powered on after DC insertion or forced power-off,
 but not after software shutdown; a 12 s hold cut power abruptly.**
 Removing/reconnecting DC followed by 300 ms restored power-on after the
-software-shutdown failure. Earlier failures with both jumper configurations
+software-shutdown failure. **On 2026-11-17, `recovery` entered BootROM USB
+mode once on a halted board; an earlier send with the recovery wire
+unattached only reset it.** Earlier failures with both jumper configurations
 remain recorded; see [recorded hardware results](#recorded-hardware-results).
-Recovery entry, power sensing, named power modes, the optional DC switch
-and LED remain unverified. The observed version 1.1 logo and `ERR`
+Power sensing, named power modes, the optional DC switch and LED remain
+unverified. The observed version 1.1 logo and `ERR`
 display and version 1.1.1 logo screensaver are described under
 [Display](#display). The carrier
 PCB revision was not recorded for any result, and the earlier results also
@@ -27,7 +29,8 @@ Do not issue board-control commands as unattended contribution checks.
 This tool is standalone. `k3-flash-bianbu.sh` does **not** call it and has
 **no `-r` option**. Use the existing
 [manual recovery instructions](../README.md#putting-the-board-in-recovery)
-for factory flashing; USB recovery automation is not an established result.
+for factory flashing. The one recorded k3ctl recovery entry was not followed
+by a flash and does not establish repeatability.
 
 ## Bundle and requirements
 
@@ -86,7 +89,7 @@ jumper. Power sensing remains untested design guidance.
 | ESP32-C3 | Connection | Matching Firefly 12-pin header | Function / status |
 |---|---|---|---|
 | GPIO3 | Pull low / release | pin 8, `PMIC_RST_OUTn` / `RST` | Reset; maintainer-reported working |
-| GPIO4 | Pull low / release | pin 10, `FORCE_RECOVERY` / `FC_REC` | Recovery; untested |
+| GPIO4 | Pull low / release | pin 10, `FORCE_RECOVERY` / `FC_REC` | Recovery; entered BootROM USB mode once on a halted board (2026-11-17) |
 | GPIO7 | Pull low / release | pin 12, `SLEEP/WAKE` | Power button; bridged 300 ms power-on worked in specific off states; 12 s forced power-off; software-shutdown wake unresolved |
 | GND | Common ground | confirmed GND, pin 9 (7 or 11 in the matching reference) | Control-signal return |
 | GPIO10 | Via optional sensing circuit only | pins 2 / 1, `PC_LED+` / `PC_LED-` | Power sensing; untested, disabled by default |
@@ -172,6 +175,56 @@ successful 300 ms power-on / 12000 ms forced-off actions.
 The optional [DC switch](#optional-dc-switch---untested) remains an unbuilt,
 untested fallback; do not equate the manual DC-cycle result with its safety
 or operation.
+
+#### Recovery entry, November 17, 2026
+
+On **2026-11-17 (20:52-21:44 UTC)**, with the maintainer at the board, the
+same K3-CoM260/Firefly setup entered BootROM USB mode through
+`k3ctl recovery`. The dongle ran firmware **1.1.1**, driven by the version
+1.0 Python client, with power sensing not wired. The K3 booted Fedora from
+its existing NOR firmware. The K3 firmware and kernel versions, the pins 5/6
+jumper state and the carrier PCB revision were not recorded with this result.
+
+Before each send, Fedora was stopped with `systemctl reboot`, which on this
+board halted after `reboot: Restarting system` (as in the
+[F45 host record](../../fedora-45/RESULTS.md)); each `recovery` therefore
+reached a halted, powered board. `fwupd` was stopped on the workstation for
+the test so that it could not send its own fastboot queries to the BootROM.
+
+| Condition / command | Observed result |
+| --- | --- |
+| `status` before each send | `rst=0 fcrec=0 pwr=0` |
+| `recovery` with the GPIO4 wire **not attached** | `OK recovery` after about 1 s; an ordinary boot: the BootROM printed `sys: 0x10000200`, `try sd...` and the `U-Boot SPL` banner, and Fedora booted |
+| `recovery` with GPIO4 attached to FC_REC (pin 10) | `OK recovery` after about 1 s; within a second the BootROM printed its USB-mode lines below, with no `U-Boot SPL` banner |
+| `status` in the mode | `fcrec=0` (line released), `ev=REC` |
+| USB-C not yet cabled | No new USB device; the board stayed in the mode for about four minutes while the cable was connected |
+| After cabling | One new device: `361c:1001`, product string `DFU USB download gadget`, high speed, one interface of class `ff/42/03` |
+| `timeout 10 fastboot getvar version-brom`, once | `version-brom: 1.0` |
+| `reset` | `OK reset`; a NOR boot within a second, Fedora on SSH about 36 s later, and the USB device gone |
+
+The BootROM's USB-mode lines, in the order recorded:
+
+```text
+sys: 0x10001200
+bm:2
+usb_init : enter 3296,3072
+usb_core_init : enter
+DWC3_GRXTHRCFG:0x4400000
+ROM: usb download handler
+```
+
+The first line distinguished the two outcomes: `sys: 0x10001200` for USB
+mode and `sys: 0x10000200` for the boot that went on to the NOR. Three
+earlier USB-mode entries in the maintainer's serial log also printed
+`0x10001200`. Nothing was staged or flashed. Read-only NOR checksums taken
+at the U-Boot prompt before and after the visit were equal over the whole
+flash and each compared range.
+
+**Not established:** factory flashing after a k3ctl entry, entry while
+Linux is running or from power-off, repeatability beyond this one
+successful entry, and any other carrier or wiring. Without the recovery
+wire attached, `recovery` is an ordinary reset: its `OK` reply does not
+show which mode the K3 entered; the serial lines and USB device do.
 
 ### Optional power sense - untested
 
@@ -367,10 +420,10 @@ timeout to accommodate the requested pulse.
 One nonblank ASCII command line produces an `OK` or `ERR` reply; blank
 lines are ignored. The sequences below describe the **source implementation**,
 not evidence that every command or timing has been tested. The recorded
-hardware results cover firmware 1.0 reset and power-button-pin behavior only;
-no tested `power on` duration exists. `status` line flags describe
-firmware-held outputs, not electrical measurements. The client waits up to
-12 s for `power on`, 15 s for `power force-off` and *ms* + 3 s for
+hardware results cover reset, explicit-duration power-button pulses and one
+`recovery` entry only; no tested `power on` duration exists. `status` line
+flags describe firmware-held outputs, not electrical measurements. The client
+waits up to 12 s for `power on`, 15 s for `power force-off` and *ms* + 3 s for
 `power cycle`; a longer `-t` overrides these.
 
 | command | effect | reply |

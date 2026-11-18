@@ -57,9 +57,10 @@ The focused standalone documents and tools remain available:
   **Reset is maintainer-reported working. With header pins 5/6 bridged,
   300 ms powered on after DC insertion or forced power-off, but not after
   software shutdown; a 12 s hold cut power abruptly.** The 1.1.1 logo
-  screensaver was observed on the dongle. See the bounded results before
-  choosing jumper or power behavior; recovery, sensing and named power
-  modes remain unverified. It is not integrated into the flashing script.
+  screensaver was observed on the dongle, and `recovery` entered BootROM USB
+  mode once on a halted board. See the bounded results before choosing
+  jumper or power behavior; sensing and named power modes remain
+  unverified. It is not integrated into the flashing script.
 - [Flashing development context](tools/k3-flash-bianbu-HANDOFF.md): protocol
   findings, design decisions, and ideas for further work.
 
