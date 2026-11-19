@@ -46,13 +46,15 @@ The focused standalone documents and tools remain available:
   remains preserved with helper scripts and the
   [kernel configuration and 14-patch bundle](k3-com260-fedora-howto/files/kernel/README.md).
   These are optional historical development references, not F45 requirements.
-- [Tools](tools/README.md): Bianbu factory flashing using stock `fastboot`
-  and USB header-button control, with usage, safety limits, and recorded results.
+- [k3-tools](https://github.com/xjamesmorris/k3-tools): the board tools,
+  moved there with their history on 2026-11-19. They cover Bianbu factory
+  flashing using stock `fastboot` and USB header-button control, with usage,
+  safety limits, and recorded results.
 - [A100/X100 experiment](wiki/A100-and-X100-Experiments.md): detailed mixed-hart
   test results, DT changes, failure chronology and draft maintainer report,
   with the [inspectable DT generator](experiments/a100-x100/README.md).
   **Experimental and buggy**, not a supported daily configuration or AI result.
-- [k3ctl](tools/k3ctl/README.md): ESP32-C3 firmware, a Python client, udev
+- [k3ctl](https://github.com/xjamesmorris/k3-tools/blob/main/k3ctl/README.md): ESP32-C3 firmware, a Python client, udev
   rules, and hardware-free tests for USB button control on the Firefly carrier.
   **Reset is maintainer-reported working. With header pins 5/6 bridged,
   300 ms powered on after DC insertion or forced power-off, but not after
@@ -61,7 +63,7 @@ The focused standalone documents and tools remain available:
   mode once on a halted board. See the bounded results before choosing
   jumper or power behavior; sensing and named power modes remain
   unverified. It is not integrated into the flashing script.
-- [Flashing development context](tools/k3-flash-bianbu-HANDOFF.md): protocol
+- [Flashing development context](https://github.com/xjamesmorris/k3-tools/blob/main/k3-flash-bianbu/k3-flash-bianbu-HANDOFF.md): protocol
   findings, design decisions, and ideas for further work.
 
 The archived F44 command authority retains the
@@ -123,7 +125,7 @@ end to end. Neither release record validates arbitrary newer inputs,
 other carriers, production use, or hostile-guest isolation.
 
 **Factory flashing erases NOR firmware and all UFS contents.** Read the
-[tool documentation](tools/README.md) before using the script.
+[tool documentation](https://github.com/xjamesmorris/k3-tools/blob/main/k3-flash-bianbu/README.md) before using the script.
 
 ## Contributing
 

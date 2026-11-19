@@ -64,7 +64,7 @@ Use the source appropriate to the claim:
    a public claim without a separately reviewed, publishable evidence record.
 
 For recovery, the
-[maintained tools documentation on public `main`](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/README.md)
+[maintained tool documentation in k3-tools](https://github.com/xjamesmorris/k3-tools/blob/main/k3-flash-bianbu/README.md)
 is the current command and safety authority. Pinned copies are historical
 procedure/result provenance, not the maintained command interface. The
 documentation distinguishes a manifest checksum pin from a successful

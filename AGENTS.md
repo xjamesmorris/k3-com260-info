@@ -18,8 +18,9 @@ sign-off, and publication requirements.
 ## Working in this repository
 
 - Keep changes proportionate to this informal collection of K3-CoM260 notes,
-  hardware findings, how-tos, scripts, and patches. Flashing is one component,
-  not the project's entire purpose.
+  hardware findings, how-tos, scripts, and patches. The board tools,
+  including flashing and k3ctl, live in
+  [k3-tools](https://github.com/xjamesmorris/k3-tools).
 - Check the branch and worktree before editing. Preserve unrelated changes,
   and stay within the human contributor's requested scope.
 - Establish whether documentation belongs in repository files or the public
@@ -38,8 +39,9 @@ sign-off, and publication requirements.
 ## Validation and safety
 
 Use the relevant existing checks and report their limits. For modified Bash
-scripts, run `bash -n` and `shellcheck`; consult [tools/README.md](tools/README.md)
-for flashing-tool requirements. Do not equate syntax checks, hashes, or patch
+scripts, run `bash -n` and `shellcheck`. Changes to the flashing tool or
+k3ctl belong in [k3-tools](https://github.com/xjamesmorris/k3-tools) and
+follow its guidance. Do not equate syntax checks, hashes, or patch
 replay with successful hardware operation.
 
 Never flash a board, overwrite a disk, change its boot environment, or reboot

@@ -60,7 +60,7 @@ after software shutdown until DC was removed/reconnected.
 The October 30 bridged power-on failure is retained; its pulse length and
 software/build versions were not recorded. The V2.1 guide's button-power-on
 bridge guidance works in some newly observed off states, not all. See the
-[bounded hardware results](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md#recorded-hardware-results)
+[bounded hardware results](https://github.com/xjamesmorris/k3-tools/blob/main/k3ctl/README.md#recorded-hardware-results)
 and the attended sequence below before choosing the jumper behavior.
 
 ## Normal setup: keep working firmware
@@ -81,7 +81,7 @@ the retained F44 installation, not the temporarily selected F45 kernel.
 ## Optional USB button controller
 
 The standalone
-[`k3ctl` bundle](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md)
+[`k3ctl` bundle](https://github.com/xjamesmorris/k3-tools/blob/main/k3ctl/README.md)
 provides ESP32-C3 firmware, a Linux Python client, a udev rule and
 hardware-free client tests for the matching Firefly-carrier header.
 **Reset is maintainer-reported working; power-button behavior depends on
@@ -165,7 +165,7 @@ Nothing was staged or flashed, and read-only NOR checksums before and after
 were equal. This is one successful entry, not a factory-flash or
 repeatability result; entry while Linux runs or from power-off is untested.
 The full sequence and its limits are in the
-[k3ctl recovery result](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/k3ctl/README.md#recovery-entry-november-17-2026).
+[k3ctl recovery result](https://github.com/xjamesmorris/k3-tools/blob/main/k3ctl/README.md#recovery-entry-november-17-2026).
 
 ## Decide whether recovery is needed
 
@@ -181,7 +181,7 @@ The full sequence and its limits are in the
 
 **This is a factory restore, not an NVMe repair or a Fedora rollback.**
 The maintained
-[flashing tool documentation on public `main`](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/README.md)
+[flashing tool documentation in k3-tools](https://github.com/xjamesmorris/k3-tools/blob/main/k3-flash-bianbu/README.md)
 is the current command and safety authority. Its normal invocation erases NOR
 firmware and all UFS contents, including the saved environment, while leaving
 NVMe alone. Use it only for needed recovery or a human's deliberate choice to
@@ -207,10 +207,10 @@ data cable. `no permissions` indicates host USB-access permissions, not a
 reason to change the wiring or repeatedly reset the board.
 
 Use the documented
-[requirements](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/README.md#requirements),
-[preflight checks](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/README.md#verifying-before-you-write)
-and [usage](https://github.com/xjamesmorris/k3-com260-info/blob/main/tools/README.md#usage)
-from the maintained public `main` documentation.
+[requirements](https://github.com/xjamesmorris/k3-tools/blob/main/k3-flash-bianbu/README.md#requirements),
+[preflight checks](https://github.com/xjamesmorris/k3-tools/blob/main/k3-flash-bianbu/README.md#verifying-before-you-write)
+and [usage](https://github.com/xjamesmorris/k3-tools/blob/main/k3-flash-bianbu/README.md#usage)
+from the maintained k3-tools documentation.
 `--check` stops before device traffic but can download and extract multi-GB
 images; it is not a side-effect-free command preview or a hardware test.
 
